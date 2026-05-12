@@ -413,6 +413,21 @@ func TestCreate_NumbersIncrementFromExisting(t *testing.T) {
 	}
 }
 
+func TestCreate_SlugStripsNonAlphanumerics(t *testing.T) {
+	dir := t.TempDir()
+	path, err := Create(dir, "ADRs live in doc/adr (4-digit)")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	want := filepath.Join(dir, "0001-adrs-live-in-doc-adr-4-digit.md")
+	if path != want {
+		t.Errorf("path = %q, want %q", path, want)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Errorf("expected file at %q: %v", path, err)
+	}
+}
+
 func TestCreate_WritesTemplateContent(t *testing.T) {
 	dir := t.TempDir()
 	path, err := Create(dir, "Use Testify")

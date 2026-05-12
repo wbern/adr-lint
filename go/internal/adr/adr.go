@@ -73,6 +73,36 @@ var frontmatterRe = regexp.MustCompile(`(?s)\A---\n(.*?)\n---\n`)
 // adrFileRe filters parseADRs to numbered ADR files (0001-foo.md).
 var adrFileRe = regexp.MustCompile(`^\d{4}-.*\.md$`)
 
+// LoadADRs reads every numbered ADR file in dir (0001-*.md ... 9999-*.md)
+// and returns one ADR per file, with no filtering. Suitable for management
+// commands like list/show/deprecate/supersede where deprecated, superseded,
+// or scaffolded-but-empty ADRs must still be visible.
+func LoadADRs(dir string) ([]ADR, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, fmt.Errorf("read adr dir %q: %w", dir, err)
+	}
+
+	var paths []string
+	for _, e := range entries {
+		if e.IsDir() || !adrFileRe.MatchString(e.Name()) {
+			continue
+		}
+		paths = append(paths, filepath.Join(dir, e.Name()))
+	}
+	sort.Strings(paths)
+
+	out := make([]ADR, 0, len(paths))
+	for _, p := range paths {
+		content, err := os.ReadFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("read adr %q: %w", p, err)
+		}
+		out = append(out, ParseADR(string(content), p))
+	}
+	return out, nil
+}
+
 // ParseADRs reads every numbered ADR file in dir (0001-*.md ... 9999-*.md),
 // parses each, and returns those eligible for AI linting:
 // non-empty Decision section, status not deprecated/superseded, and no
@@ -305,7 +335,7 @@ func normalizePreFilter(fm *frontmatter) []string {
 // Create writes a new ADR markdown file under dir using the given title.
 // Returns the full path of the created file.
 func Create(dir, title string) (string, error) {
-	slug := strings.ToLower(strings.ReplaceAll(title, " ", "-"))
+	slug := slugify(title)
 	next := nextADRNumber(dir)
 	path := filepath.Join(dir, fmt.Sprintf("%04d-%s.md", next, slug))
 	body := fmt.Sprintf(`---
@@ -326,6 +356,14 @@ applies_to:
 		return "", err
 	}
 	return path, nil
+}
+
+var slugSepRE = regexp.MustCompile(`[^a-z0-9]+`)
+
+func slugify(s string) string {
+	s = strings.ToLower(s)
+	s = slugSepRE.ReplaceAllString(s, "-")
+	return strings.Trim(s, "-")
 }
 
 var adrNumberRE = regexp.MustCompile(`^(\d{4})-`)

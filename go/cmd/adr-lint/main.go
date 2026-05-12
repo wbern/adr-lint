@@ -4,6 +4,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -11,25 +12,43 @@ import (
 	"github.com/wbern/adr-lint/go/internal/claudeclient"
 	"github.com/wbern/adr-lint/go/internal/cliparser"
 	"github.com/wbern/adr-lint/go/internal/createcmd"
+	"github.com/wbern/adr-lint/go/internal/deprecatecmd"
 	"github.com/wbern/adr-lint/go/internal/dotenv"
 	"github.com/wbern/adr-lint/go/internal/gitcontext"
+	"github.com/wbern/adr-lint/go/internal/listcmd"
 	"github.com/wbern/adr-lint/go/internal/runner"
+	"github.com/wbern/adr-lint/go/internal/showcmd"
+	"github.com/wbern/adr-lint/go/internal/supersedecmd"
 	"github.com/wbern/adr-lint/go/internal/types"
 )
 
+type subcommand func(args []string, dir string, out io.Writer) error
+
+var subcommands = map[string]subcommand{
+	"create":    createcmd.Run,
+	"show":      showcmd.Run,
+	"deprecate": deprecatecmd.Run,
+	"supersede": supersedecmd.Run,
+	"list": func(_ []string, dir string, out io.Writer) error {
+		return listcmd.Run(dir, out)
+	},
+}
+
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "create" {
-		git := gitcontext.NewDefaultClient()
-		adrDir := filepath.Join(git.GitRoot(), "doc", "adr")
-		if err := os.MkdirAll(adrDir, 0755); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+	if len(os.Args) > 1 {
+		if fn, ok := subcommands[os.Args[1]]; ok {
+			git := gitcontext.NewDefaultClient()
+			adrDir := filepath.Join(git.GitRoot(), "doc", "adr")
+			if err := os.MkdirAll(adrDir, 0755); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			if err := fn(os.Args[2:], adrDir, os.Stdout); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			return
 		}
-		if err := createcmd.Run(os.Args[2:], adrDir, os.Stdout); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		return
 	}
 
 	opts, err := cliparser.ParseArgs(os.Args[1:])

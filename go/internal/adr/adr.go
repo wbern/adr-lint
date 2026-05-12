@@ -391,6 +391,19 @@ func SetStatus(body, newStatus string) (string, bool) {
 	return statusRE.ReplaceAllString(body, "status: "+newStatus), true
 }
 
+// InsertAfterStatus inserts line on a new line immediately after the
+// `status:` line in body's YAML frontmatter. Reports false (and returns
+// body unchanged) when no status line is present so callers can decide
+// whether to error out.
+func InsertAfterStatus(body, line string) (string, bool) {
+	if !statusRE.MatchString(body) {
+		return body, false
+	}
+	return statusRE.ReplaceAllStringFunc(body, func(match string) string {
+		return match + "\n" + line
+	}), true
+}
+
 var slugSepRE = regexp.MustCompile(`[^a-z0-9]+`)
 
 func slugify(s string) string {

@@ -30,6 +30,28 @@ func TestRun_UnknownReplacementErrors(t *testing.T) {
 	}
 }
 
+func TestRun_SelfSupersessionErrors(t *testing.T) {
+	dir := t.TempDir()
+	body := "---\nstatus: accepted\n---\n# 1. First\n\n## Decision\nx\n"
+	path := filepath.Join(dir, "0001-first.md")
+	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := Run([]string{"1", "1"}, dir, &out)
+	if err == nil {
+		t.Fatal("expected error when oldID == newID")
+	}
+	if !strings.Contains(err.Error(), "itself") {
+		t.Errorf("err = %q, want mention of self-supersession", err.Error())
+	}
+	got, _ := os.ReadFile(path)
+	if strings.Contains(string(got), "superseded") {
+		t.Errorf("source ADR should be untouched; file is:\n%s", got)
+	}
+}
+
 func TestRun_NoStatusLineErrors(t *testing.T) {
 	dir := t.TempDir()
 	oldBody := "---\napplies_to:\n  - \"**/*\"\n---\n# 1. First\n\n## Decision\nx\n"

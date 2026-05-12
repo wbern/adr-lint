@@ -19,6 +19,9 @@ func Run(args []string, dir string, out io.Writer) error {
 	}
 	oldID := adr.NormalizeID(args[0])
 	newID := adr.NormalizeID(args[1])
+	if oldID == newID {
+		return fmt.Errorf("cannot supersede ADR %s with itself", args[0])
+	}
 
 	adrs, err := adr.LoadADRs(dir)
 	if err != nil {
@@ -56,7 +59,6 @@ func Run(args []string, dir string, out io.Writer) error {
 	return fmt.Errorf("ADR %s not found", args[0])
 }
 
-var statusLineRE = regexp.MustCompile(`(?m)^status:\s*\S+\s*$`)
 var supersededByRE = regexp.MustCompile(`(?m)^superseded_by:.*$`)
 
 func addOrReplaceSupersededBy(body, newID string) string {
@@ -64,7 +66,6 @@ func addOrReplaceSupersededBy(body, newID string) string {
 	if supersededByRE.MatchString(body) {
 		return supersededByRE.ReplaceAllString(body, line)
 	}
-	return statusLineRE.ReplaceAllStringFunc(body, func(match string) string {
-		return match + "\n" + line
-	})
+	out, _ := adr.InsertAfterStatus(body, line)
+	return out
 }

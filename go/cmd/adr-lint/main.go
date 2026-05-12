@@ -23,13 +23,16 @@ import (
 	"github.com/wbern/adr-lint/go/internal/types"
 )
 
-var subcommands = map[string]dispatcher.Func{
-	"create":    createcmd.Run,
-	"show":      showcmd.Run,
-	"deprecate": deprecatecmd.Run,
-	"supersede": supersedecmd.Run,
-	"list": func(_ []string, dir string, out io.Writer) error {
-		return listcmd.Run(dir, out)
+var subcommands = map[string]dispatcher.Command{
+	"create":    {Run: createcmd.Run, Usage: "adr-lint create <title>"},
+	"show":      {Run: showcmd.Run, Usage: "adr-lint show <id>"},
+	"deprecate": {Run: deprecatecmd.Run, Usage: "adr-lint deprecate <id>"},
+	"supersede": {Run: supersedecmd.Run, Usage: "adr-lint supersede <old-id> <new-id>"},
+	"list": {
+		Run: func(_ []string, dir string, out io.Writer) error {
+			return listcmd.Run(dir, out)
+		},
+		Usage: "adr-lint list",
 	},
 }
 

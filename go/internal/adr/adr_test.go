@@ -489,6 +489,29 @@ func TestSetStatus_ReplacesExistingLine(t *testing.T) {
 	}
 }
 
+func TestInsertAfterStatus_PlacesLineImmediatelyAfterStatus(t *testing.T) {
+	body := "---\nstatus: accepted\napplies_to:\n  - \"**/*\"\n---\n# 1\n"
+	got, ok := InsertAfterStatus(body, `superseded_by: "0002"`)
+	if !ok {
+		t.Fatal("ok=false, want true when status line is present")
+	}
+	want := "---\nstatus: accepted\nsuperseded_by: \"0002\"\napplies_to:\n  - \"**/*\"\n---\n# 1\n"
+	if got != want {
+		t.Errorf("got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
+func TestInsertAfterStatus_ReportsMissingStatusLine(t *testing.T) {
+	body := "---\napplies_to:\n  - \"**/*\"\n---\n# 1\n"
+	got, ok := InsertAfterStatus(body, "x: y")
+	if ok {
+		t.Error("ok=true, want false when status line is absent")
+	}
+	if got != body {
+		t.Errorf("body mutated; got:\n%s", got)
+	}
+}
+
 func TestSetStatus_ReportsMissingLine(t *testing.T) {
 	body := "---\napplies_to:\n  - \"**/*\"\n---\n# 1\n"
 	got, ok := SetStatus(body, "deprecated")

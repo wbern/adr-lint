@@ -376,6 +376,70 @@ func TestParseADRs_IgnoresNonADRFiles(t *testing.T) {
 	}
 }
 
+func TestCreate_WritesNumberedFileInEmptyDir(t *testing.T) {
+	dir := t.TempDir()
+
+	path, err := Create(dir, "Use Testify")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	wantPath := filepath.Join(dir, "0001-use-testify.md")
+	if path != wantPath {
+		t.Errorf("path = %q, want %q", path, wantPath)
+	}
+	if _, err := os.Stat(wantPath); err != nil {
+		t.Errorf("expected file at %q: %v", wantPath, err)
+	}
+}
+
+func TestCreate_NumbersIncrementFromExisting(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "0001-first.md"), []byte("---\nstatus: accepted\n---\n## Decision\nx"), 0644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "0007-seventh.md"), []byte("---\nstatus: accepted\n---\n## Decision\nx"), 0644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	path, err := Create(dir, "Next One")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	want := filepath.Join(dir, "0008-next-one.md")
+	if path != want {
+		t.Errorf("path = %q, want %q", path, want)
+	}
+}
+
+func TestCreate_WritesTemplateContent(t *testing.T) {
+	dir := t.TempDir()
+	path, err := Create(dir, "Use Testify")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	s := string(body)
+	for _, want := range []string{
+		"---\n",
+		"status: proposed\n",
+		"applies_to:\n",
+		`  - "**/*"`,
+		"# 1. Use Testify",
+		"## Context",
+		"## Decision",
+		"## Consequences",
+	} {
+		if !contains(s, want) {
+			t.Errorf("missing %q in:\n%s", want, s)
+		}
+	}
+}
+
 // ---------- helpers ----------
 
 func mustContain(t *testing.T, haystack, needle string) {

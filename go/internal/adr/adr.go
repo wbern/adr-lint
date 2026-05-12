@@ -301,3 +301,51 @@ func normalizePreFilter(fm *frontmatter) []string {
 	}
 	return nil
 }
+
+// Create writes a new ADR markdown file under dir using the given title.
+// Returns the full path of the created file.
+func Create(dir, title string) (string, error) {
+	slug := strings.ToLower(strings.ReplaceAll(title, " ", "-"))
+	next := nextADRNumber(dir)
+	path := filepath.Join(dir, fmt.Sprintf("%04d-%s.md", next, slug))
+	body := fmt.Sprintf(`---
+status: proposed
+applies_to:
+  - "**/*"
+---
+
+# %d. %s
+
+## Context
+
+## Decision
+
+## Consequences
+`, next, title)
+	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+var adrNumberRE = regexp.MustCompile(`^(\d{4})-`)
+
+func nextADRNumber(dir string) int {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return 1
+	}
+	highest := 0
+	for _, e := range entries {
+		m := adrNumberRE.FindStringSubmatch(e.Name())
+		if m == nil {
+			continue
+		}
+		var n int
+		fmt.Sscanf(m[1], "%d", &n)
+		if n > highest {
+			highest = n
+		}
+	}
+	return highest + 1
+}

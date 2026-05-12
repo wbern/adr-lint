@@ -1,0 +1,13 @@
+{
+  "$comment": "Files matching these patterns are excluded from all ADR checks. Edit to add/remove global exclusions.",
+  "patterns": [
+    "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock",
+    "*.lock",
+    "**/*.generated.*",
+    "**/generated/**",
+    "dist/**",
+    "node_modules/**"
+  ]
+}

@@ -1,0 +1,403 @@
+package adr
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"testing"
+)
+
+// ---------- ExtractSection ----------
+
+func TestExtractSection_BasicSections(t *testing.T) {
+	content := "# 1. Test ADR\n" +
+		"\n" +
+		"## Status\n" +
+		"\n" +
+		"Accepted\n" +
+		"\n" +
+		"## Context\n" +
+		"\n" +
+		"Some context here.\n" +
+		"\n" +
+		"## Decision\n" +
+		"\n" +
+		"The decision text.\n" +
+		"\n" +
+		"## Consequences\n" +
+		"\n" +
+		"The consequences.\n"
+
+	cases := map[string]string{
+		"Status":   "Accepted",
+		"Context":  "Some context here.",
+		"Decision": "The decision text.",
+	}
+	for name, want := range cases {
+		if got := ExtractSection(content, name); got != want {
+			t.Errorf("ExtractSection(%q) = %q, want %q", name, got, want)
+		}
+	}
+}
+
+func TestExtractSection_MissingReturnsEmpty(t *testing.T) {
+	content := "# 1. Test ADR\n\n## Status\n\nAccepted\n"
+	if got := ExtractSection(content, "Decision"); got != "" {
+		t.Errorf("ExtractSection(Decision) = %q, want empty", got)
+	}
+}
+
+func TestExtractSection_Multiline(t *testing.T) {
+	content := "# 1. Test\n\n## Decision\n\nLine 1\nLine 2\nLine 3\n\n## Consequences\n\nDone.\n"
+	want := "Line 1\nLine 2\nLine 3"
+	if got := ExtractSection(content, "Decision"); got != want {
+		t.Errorf("ExtractSection = %q, want %q", got, want)
+	}
+}
+
+// ---------- ParseADR ----------
+
+func TestParseADR_Complete(t *testing.T) {
+	content := "# 2. Use Standard Testing Helpers\n" +
+		"\n" +
+		"Date: 2026-01-28\n" +
+		"\n" +
+		"## Status\n\nAccepted\n" +
+		"\n" +
+		"## Applies To\n\n- `**/*_test.go`\n- `**/*_integration_test.go`\n" +
+		"\n" +
+		"## Complexity\n\nlite\n" +
+		"\n" +
+		"## Context\n\nTesting context.\n" +
+		"\n" +
+		"## Decision\n\nCheck for gomock imports.\n" +
+		"\n" +
+		"## Consequences\n\nBetter testing.\n"
+
+	adr := ParseADR(content, "/path/to/0002-use-testify.md")
+
+	if adr.ID != "2" {
+		t.Errorf("ID = %q, want %q", adr.ID, "2")
+	}
+	if adr.Title != "Use Standard Testing Helpers" {
+		t.Errorf("Title = %q", adr.Title)
+	}
+	if !reflect.DeepEqual(adr.AppliesTo, []string{"**/*_test.go", "**/*_integration_test.go"}) {
+		t.Errorf("AppliesTo = %v", adr.AppliesTo)
+	}
+	if adr.Complexity != ComplexityLite {
+		t.Errorf("Complexity = %q", adr.Complexity)
+	}
+	if adr.Decision != "Check for gomock imports." {
+		t.Errorf("Decision = %q", adr.Decision)
+	}
+	if adr.FilePath != "/path/to/0002-use-testify.md" {
+		t.Errorf("FilePath = %q", adr.FilePath)
+	}
+}
+
+func TestParseADR_DefaultComplexityStandard(t *testing.T) {
+	content := "# 1. Test\n\n## Status\n\nAccepted\n\n## Decision\n\nDo something.\n"
+	adr := ParseADR(content, "0001-test.md")
+	if adr.Complexity != ComplexityStandard {
+		t.Errorf("Complexity = %q, want standard", adr.Complexity)
+	}
+}
+
+func TestParseADR_DiffContextFalseFromFrontmatter(t *testing.T) {
+	content := "---\n" +
+		"status: accepted\n" +
+		"applies_to:\n  - \"**/*.go\"\n" +
+		"complexity: lite\n" +
+		"diff_context: false\n" +
+		"---\n\n" +
+		"# 1. Test ADR\n\n## Decision\n\nCheck for violations.\n"
+	adr := ParseADR(content, "0001-test.md")
+	if adr.DiffContext != false {
+		t.Errorf("DiffContext = %v, want false", adr.DiffContext)
+	}
+}
+
+func TestParseADR_DiffContextDefaultsTrue(t *testing.T) {
+	content := "---\nstatus: accepted\napplies_to:\n  - \"**/*.go\"\n---\n\n" +
+		"# 1. Test ADR\n\n## Decision\n\nCheck for violations.\n"
+	adr := ParseADR(content, "0001-test.md")
+	if adr.DiffContext != true {
+		t.Errorf("DiffContext = %v, want true", adr.DiffContext)
+	}
+}
+
+func TestParseADR_AppliesToDefaultsToAll(t *testing.T) {
+	content := "# 1. Test\n\n## Status\n\nAccepted\n\n## Decision\n\nDo something.\n"
+	adr := ParseADR(content, "0001-test.md")
+	if !reflect.DeepEqual(adr.AppliesTo, []string{"**/*"}) {
+		t.Errorf("AppliesTo = %v, want [**/*]", adr.AppliesTo)
+	}
+}
+
+func TestParseADR_NegationPatterns(t *testing.T) {
+	content := "# 1. Test\n\n## Applies To\n\n- `**/*.go`\n- `!**/*_test.go`\n\n## Decision\n\nCheck.\n"
+	adr := ParseADR(content, "0001-test.md")
+	if !reflect.DeepEqual(adr.AppliesTo, []string{"**/*.go", "!**/*_test.go"}) {
+		t.Errorf("AppliesTo = %v", adr.AppliesTo)
+	}
+}
+
+func TestParseADR_YAMLFrontmatter(t *testing.T) {
+	content := "---\n" +
+		"status: accepted\n" +
+		"date: 2026-01-28\n" +
+		"applies_to:\n" +
+		"  - \"**/*.go\"\n" +
+		"  - \"**/*.proto\"\n" +
+		"  - \"!**/*_test.go\"\n" +
+		"complexity: lite\n" +
+		"---\n\n" +
+		"# 2. Use Standard Testing Helpers\n\n" +
+		"## Context\n\nTesting context.\n\n" +
+		"## Decision\n\nCheck for gomock imports.\n\n" +
+		"## Consequences\n\nBetter testing.\n"
+
+	adr := ParseADR(content, "/path/to/0002-use-testify.md")
+	if adr.ID != "2" {
+		t.Errorf("ID = %q", adr.ID)
+	}
+	if adr.Title != "Use Standard Testing Helpers" {
+		t.Errorf("Title = %q", adr.Title)
+	}
+	want := []string{"**/*.go", "**/*.proto", "!**/*_test.go"}
+	if !reflect.DeepEqual(adr.AppliesTo, want) {
+		t.Errorf("AppliesTo = %v, want %v", adr.AppliesTo, want)
+	}
+	if adr.Complexity != ComplexityLite {
+		t.Errorf("Complexity = %q", adr.Complexity)
+	}
+	if adr.Decision != "Check for gomock imports." {
+		t.Errorf("Decision = %q", adr.Decision)
+	}
+}
+
+func TestParseADR_FrontmatterComplexityComplex(t *testing.T) {
+	content := "---\nstatus: accepted\ncomplexity: complex\n---\n\n" +
+		"# 5. Architecture Review\n\n## Decision\n\nDeep analysis needed.\n"
+	adr := ParseADR(content, "0005-arch.md")
+	if adr.Complexity != ComplexityComplex {
+		t.Errorf("Complexity = %q, want complex", adr.Complexity)
+	}
+}
+
+func TestParseADR_FrontmatterAppliesToOverridesSection(t *testing.T) {
+	content := "---\napplies_to:\n  - \"pkg/**/*.go\"\n---\n\n" +
+		"# 1. Test\n\n## Applies To\n\n- `**/*.md`\n\n## Decision\n\nCheck.\n"
+	adr := ParseADR(content, "0001-test.md")
+	if !reflect.DeepEqual(adr.AppliesTo, []string{"pkg/**/*.go"}) {
+		t.Errorf("AppliesTo = %v, want [pkg/**/*.go]", adr.AppliesTo)
+	}
+}
+
+func TestParseADR_StatusFromFrontmatter(t *testing.T) {
+	content := "---\nstatus: deprecated\n---\n\n" +
+		"# 9. Old Convention\n\n## Decision\n\nCheck something.\n"
+	adr := ParseADR(content, "0009-old.md")
+	if adr.Status != StatusDeprecated {
+		t.Errorf("Status = %q, want deprecated", adr.Status)
+	}
+}
+
+func TestParseADR_StatusDefaultsAccepted(t *testing.T) {
+	content := "---\ncomplexity: lite\n---\n\n" +
+		"# 2. Use Testify\n\n## Decision\n\nCheck for gomock.\n"
+	adr := ParseADR(content, "0002-testify.md")
+	if adr.Status != StatusAccepted {
+		t.Errorf("Status = %q, want accepted", adr.Status)
+	}
+}
+
+// normalizePreFilter folds the `string | []string` YAML union into a
+// slice; this test pins the single-string case.
+func TestParseADR_PreFilterStringNormalized(t *testing.T) {
+	content := "---\nstatus: accepted\ncomplexity: ultralite\npre_filter: \"gomock\"\n---\n\n" +
+		"# 2. Use Testify\n\n## Decision\n\nCheck for gomock imports.\n"
+	adr := ParseADR(content, "0002-testify.md")
+	if !reflect.DeepEqual(adr.PreFilter, []string{"gomock"}) {
+		t.Errorf("PreFilter = %v, want [gomock]", adr.PreFilter)
+	}
+}
+
+func TestParseADR_PreFilterAbsentIsNil(t *testing.T) {
+	content := "---\ncomplexity: lite\n---\n\n" +
+		"# 3. Some ADR\n\n## Decision\n\nCheck something.\n"
+	adr := ParseADR(content, "0003-some.md")
+	if adr.PreFilter != nil {
+		t.Errorf("PreFilter = %v, want nil", adr.PreFilter)
+	}
+}
+
+func TestParseADR_EnforcedByFromFrontmatter(t *testing.T) {
+	content := "---\nstatus: accepted\nenforced_by: eslint\npre_filter: \"../\"\n---\n\n" +
+		"# 7. No Relative Cross-Package Imports\n\n" +
+		"## Decision\n\nUse package names for cross-package imports.\n"
+	adr := ParseADR(content, "0007-no-relative.md")
+	if adr.EnforcedBy == nil || *adr.EnforcedBy != "eslint" {
+		t.Errorf("EnforcedBy = %v, want *\"eslint\"", adr.EnforcedBy)
+	}
+}
+
+func TestParseADR_EnforcedByAbsentIsNil(t *testing.T) {
+	content := "---\nstatus: accepted\n---\n\n" +
+		"# 3. Some ADR\n\n## Decision\n\nCheck something.\n"
+	adr := ParseADR(content, "0003-some.md")
+	if adr.EnforcedBy != nil {
+		t.Errorf("EnforcedBy = %v, want nil", *adr.EnforcedBy)
+	}
+}
+
+// ---------- ParseADR — Decision extraction ----------
+
+func TestParseADR_DecisionWithCodeBlocks(t *testing.T) {
+	content := "---\nstatus: accepted\napplies_to:\n  - \"**/*.go\"\n---\n\n" +
+		"# 11. Use Active Voice in Commit Messages\n\n" +
+		"## Context\n\nCommit messages are often written in passive voice, making them harder to understand.\n\n" +
+		"## Decision\n\n" +
+		"We will write all commit messages in active voice, starting with an imperative verb.\n\n" +
+		"**Forbidden pattern:**\n```\n// BAD - passive voice\n\"Bug was fixed in the login flow\"\n```\n\n" +
+		"**Required pattern:**\n```\n// GOOD - active voice\n\"Fix bug in login flow\"\n```\n\n" +
+		"## Consequences\n\n**Positive:**\n- Clearer commit history\n- Consistent style\n\n" +
+		"**Negative:**\n- Requires habit change\n\n" +
+		"## References\n\n- Git documentation on commit messages\n"
+
+	adr := ParseADR(content, "0011-active-voice.md")
+	mustContain(t, adr.Decision, "We will write all commit messages in active voice")
+	mustContain(t, adr.Decision, "Forbidden pattern")
+	mustContain(t, adr.Decision, "Required pattern")
+}
+
+func TestParseADR_DecisionMinimal(t *testing.T) {
+	content := "---\nstatus: accepted\napplies_to:\n  - \"**/*.go\"\n---\n\n" +
+		"# 12. Use Const Assertions\n\n" +
+		"## Context\n\nType inference can be too broad.\n\n" +
+		"## Decision\n\nWe will use const assertions for literal types.\n\n" +
+		"## Consequences\n\nBetter type narrowing.\n"
+
+	adr := ParseADR(content, "0012-const.md")
+	if len(adr.Decision) == 0 {
+		t.Fatalf("Decision was empty")
+	}
+	mustContain(t, adr.Decision, "We will use const assertions")
+}
+
+// ---------- ParseADRs ----------
+
+// writeADRs builds a hermetic ADR directory in t.TempDir().
+func writeADRs(t *testing.T, files map[string]string) string {
+	t.Helper()
+	dir := t.TempDir()
+	for name, body := range files {
+		path := filepath.Join(dir, name)
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+	return dir
+}
+
+func TestParseADRs_FiltersDeprecatedAndSuperseded(t *testing.T) {
+	dir := writeADRs(t, map[string]string{
+		"0001-keep.md":       "---\nstatus: accepted\n---\n\n# 1. Keep\n\n## Decision\n\nDo it.\n",
+		"0002-deprecated.md": "---\nstatus: deprecated\n---\n\n# 2. Old\n\n## Decision\n\nOld thing.\n",
+		"0003-superseded.md": "---\nstatus: superseded\n---\n\n# 3. Older\n\n## Decision\n\nOlder thing.\n",
+		"0004-keep.md":       "---\nstatus: proposed\n---\n\n# 4. Maybe\n\n## Decision\n\nMaybe do it.\n",
+	})
+
+	adrs, err := ParseADRs(dir)
+	if err != nil {
+		t.Fatalf("ParseADRs: %v", err)
+	}
+	for _, a := range adrs {
+		if a.Status == StatusDeprecated || a.Status == StatusSuperseded {
+			t.Errorf("ParseADRs returned %s ADR %s", a.Status, a.ID)
+		}
+	}
+	if len(adrs) != 2 {
+		t.Errorf("len(adrs) = %d, want 2 (ids: %v)", len(adrs), idsOf(adrs))
+	}
+}
+
+func TestParseADRs_FiltersEnforcedBy(t *testing.T) {
+	dir := writeADRs(t, map[string]string{
+		"0001-ai.md":     "---\nstatus: accepted\n---\n\n# 1. AI Lint\n\n## Decision\n\nCheck it.\n",
+		"0002-eslint.md": "---\nstatus: accepted\nenforced_by: eslint\n---\n\n# 2. ESLint\n\n## Decision\n\nLint it.\n",
+	})
+
+	adrs, err := ParseADRs(dir)
+	if err != nil {
+		t.Fatalf("ParseADRs: %v", err)
+	}
+	for _, a := range adrs {
+		if a.EnforcedBy != nil {
+			t.Errorf("ParseADRs returned enforced_by=%q ADR %s", *a.EnforcedBy, a.ID)
+		}
+	}
+	if len(adrs) != 1 {
+		t.Errorf("len(adrs) = %d, want 1 (ids: %v)", len(adrs), idsOf(adrs))
+	}
+}
+
+func TestParseADRs_FiltersEmptyDecision(t *testing.T) {
+	dir := writeADRs(t, map[string]string{
+		"0001-real.md":  "---\nstatus: accepted\n---\n\n# 1. Real\n\n## Decision\n\nDo it.\n",
+		"0002-empty.md": "---\nstatus: accepted\n---\n\n# 2. Empty\n\n## Context\n\nJust context.\n",
+	})
+
+	adrs, err := ParseADRs(dir)
+	if err != nil {
+		t.Fatalf("ParseADRs: %v", err)
+	}
+	if len(adrs) != 1 || adrs[0].ID != "1" {
+		t.Errorf("ParseADRs returned %v, want only ADR 1", idsOf(adrs))
+	}
+}
+
+func TestParseADRs_IgnoresNonADRFiles(t *testing.T) {
+	dir := writeADRs(t, map[string]string{
+		"0001-keep.md":      "---\nstatus: accepted\n---\n\n# 1. Keep\n\n## Decision\n\nDo it.\n",
+		"README.md":         "# Not an ADR\n",
+		"template.md":       "# Template\n\n## Decision\n\nN/A\n",
+		"0002-also-keep.md": "---\nstatus: accepted\n---\n\n# 2. Also\n\n## Decision\n\nAlso.\n",
+		"notes.txt":         "scratch\n",
+	})
+
+	adrs, err := ParseADRs(dir)
+	if err != nil {
+		t.Fatalf("ParseADRs: %v", err)
+	}
+	if len(adrs) != 2 {
+		t.Errorf("len(adrs) = %d, want 2 (ids: %v)", len(adrs), idsOf(adrs))
+	}
+}
+
+// ---------- helpers ----------
+
+func mustContain(t *testing.T, haystack, needle string) {
+	t.Helper()
+	if !contains(haystack, needle) {
+		t.Errorf("expected substring %q in:\n%s", needle, haystack)
+	}
+}
+
+func contains(s, sub string) bool {
+	for i := 0; i+len(sub) <= len(s); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
+}
+
+func idsOf(adrs []ADR) []string {
+	out := make([]string, 0, len(adrs))
+	for _, a := range adrs {
+		out = append(out, a.ID)
+	}
+	return out
+}

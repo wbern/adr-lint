@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+.cache/
+adr-lint-report/
+.env
+.env.local
+.DS_Store
+
+# Gas Town (added by gt)
+.runtime/
+.claude/
+.logs/
+__pycache__/
+state.json
+CLAUDE.md
+CLAUDE.local.md

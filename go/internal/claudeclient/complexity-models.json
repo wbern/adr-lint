@@ -1,0 +1,25 @@
+{
+  "$comment": "Maps provider + complexity to model, chunk size, and output token limit. Smaller chunks keep critical reminders closer to code, reducing attention fade.",
+  "claude": {
+    "ultralite": {
+      "model": "haiku",
+      "maxTokensPerChunk": 50000,
+      "maxOutputTokens": 16384
+    },
+    "lite": {
+      "model": "haiku",
+      "maxTokensPerChunk": 35000,
+      "maxOutputTokens": 16384
+    },
+    "standard": {
+      "model": "claude-sonnet-4-6",
+      "maxTokensPerChunk": 35000,
+      "maxOutputTokens": 16384
+    },
+    "complex": {
+      "model": "claude-opus-4-6",
+      "maxTokensPerChunk": 25000,
+      "maxOutputTokens": 16384
+    }
+  }
+}

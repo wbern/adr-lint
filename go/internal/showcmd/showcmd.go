@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 
 	"github.com/wbern/adr-lint/go/internal/adr"
 )
@@ -17,13 +16,13 @@ func Run(args []string, dir string, out io.Writer) error {
 	if len(args) == 0 {
 		return fmt.Errorf("missing id: usage: adr-lint show <id>")
 	}
-	want := normalizeID(args[0])
+	want := adr.NormalizeID(args[0])
 	adrs, err := adr.LoadADRs(dir)
 	if err != nil {
 		return err
 	}
 	for _, a := range adrs {
-		if normalizeID(a.ID) == want {
+		if adr.NormalizeID(a.ID) == want {
 			body, err := os.ReadFile(a.FilePath)
 			if err != nil {
 				return err
@@ -33,11 +32,4 @@ func Run(args []string, dir string, out io.Writer) error {
 		}
 	}
 	return fmt.Errorf("ADR %s not found", args[0])
-}
-
-func normalizeID(s string) string {
-	if n, err := strconv.Atoi(s); err == nil {
-		return fmt.Sprintf("%04d", n)
-	}
-	return s
 }

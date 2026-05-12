@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"regexp"
-	"strconv"
 
 	"github.com/wbern/adr-lint/go/internal/adr"
 )
@@ -18,22 +17,32 @@ func Run(args []string, dir string, out io.Writer) error {
 	if len(args) < 2 {
 		return fmt.Errorf("missing ids: usage: adr-lint supersede <old-id> <new-id>")
 	}
-	oldID := normalizeID(args[0])
-	newID := normalizeID(args[1])
+	oldID := adr.NormalizeID(args[0])
+	newID := adr.NormalizeID(args[1])
 
 	adrs, err := adr.LoadADRs(dir)
 	if err != nil {
 		return err
 	}
+	foundReplacement := false
 	for _, a := range adrs {
-		if normalizeID(a.ID) != oldID {
+		if adr.NormalizeID(a.ID) == newID {
+			foundReplacement = true
+			break
+		}
+	}
+	if !foundReplacement {
+		return fmt.Errorf("replacement ADR %s not found", args[1])
+	}
+	for _, a := range adrs {
+		if adr.NormalizeID(a.ID) != oldID {
 			continue
 		}
 		body, err := os.ReadFile(a.FilePath)
 		if err != nil {
 			return err
 		}
-		updated := setStatus(string(body), "superseded")
+		updated := adr.SetStatus(string(body), "superseded")
 		updated = addOrReplaceSupersededBy(updated, newID)
 		if err := os.WriteFile(a.FilePath, []byte(updated), 0644); err != nil {
 			return err
@@ -44,27 +53,15 @@ func Run(args []string, dir string, out io.Writer) error {
 	return fmt.Errorf("ADR %s not found", args[0])
 }
 
-var statusRE = regexp.MustCompile(`(?m)^status:\s*\S+\s*$`)
+var statusLineRE = regexp.MustCompile(`(?m)^status:\s*\S+\s*$`)
 var supersededByRE = regexp.MustCompile(`(?m)^superseded_by:.*$`)
-
-func setStatus(body, newStatus string) string {
-	return statusRE.ReplaceAllString(body, "status: "+newStatus)
-}
 
 func addOrReplaceSupersededBy(body, newID string) string {
 	line := fmt.Sprintf("superseded_by: %q", newID)
 	if supersededByRE.MatchString(body) {
 		return supersededByRE.ReplaceAllString(body, line)
 	}
-	return statusRE.ReplaceAllStringFunc(body, func(match string) string {
+	return statusLineRE.ReplaceAllStringFunc(body, func(match string) string {
 		return match + "\n" + line
 	})
 }
-
-func normalizeID(s string) string {
-	if n, err := strconv.Atoi(s); err == nil {
-		return fmt.Sprintf("%04d", n)
-	}
-	return s
-}
-

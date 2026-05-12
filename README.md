@@ -12,17 +12,26 @@ When you commit code or open a PR, this tool checks your changes against relevan
 2. CI checks all PR changes against main branch
 3. Results appear in your terminal (local) or as PR comments (CI)
 
-## Creating ADRs
+## Managing ADRs
 
-Use the `/create-adr` command in Claude Code:
+The CLI has bd-style subcommands for managing the ADRs in `doc/adr/`:
 
+```bash
+adr-lint create "Use Testify for tests"   # scaffold doc/adr/NNNN-use-testify-for-tests.md
+adr-lint list                              # one line per ADR (id, status, title)
+adr-lint show 1                            # raw file contents
+adr-lint deprecate 1                       # flip frontmatter status: deprecated
+adr-lint supersede 1 2                     # status: superseded + superseded_by: "0002"
+adr-lint help                              # subcommand reference
 ```
-/create-adr <topic>
-```
 
-This walks you through the discovery process and generates a properly formatted ADR with the correct frontmatter fields.
+`adr-lint create` scaffolds an ADR with the minimum frontmatter and the
+Context / Decision / Consequences sections. For a guided discovery flow that
+also drafts the body, the `/create-adr` Claude Code slash command remains
+available.
 
-See [`doc/adr/templates/template.md`](doc/adr/templates/template.md) for the format and the `/create-adr` command documentation for the full field reference.
+See [`doc/adr/templates/template.md`](doc/adr/templates/template.md) for the
+full frontmatter field reference.
 
 ## Setup
 

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
-	"strconv"
 
 	"github.com/wbern/adr-lint/go/internal/adr"
 )
@@ -18,20 +16,20 @@ func Run(args []string, dir string, out io.Writer) error {
 	if len(args) == 0 {
 		return fmt.Errorf("missing id: usage: adr-lint deprecate <id>")
 	}
-	want := normalizeID(args[0])
+	want := adr.NormalizeID(args[0])
 	adrs, err := adr.LoadADRs(dir)
 	if err != nil {
 		return err
 	}
 	for _, a := range adrs {
-		if normalizeID(a.ID) != want {
+		if adr.NormalizeID(a.ID) != want {
 			continue
 		}
 		body, err := os.ReadFile(a.FilePath)
 		if err != nil {
 			return err
 		}
-		updated := setStatus(string(body), "deprecated")
+		updated := adr.SetStatus(string(body), "deprecated")
 		if err := os.WriteFile(a.FilePath, []byte(updated), 0644); err != nil {
 			return err
 		}
@@ -39,17 +37,4 @@ func Run(args []string, dir string, out io.Writer) error {
 		return nil
 	}
 	return fmt.Errorf("ADR %s not found", args[0])
-}
-
-var statusRE = regexp.MustCompile(`(?m)^status:\s*\S+\s*$`)
-
-func setStatus(body, newStatus string) string {
-	return statusRE.ReplaceAllString(body, "status: "+newStatus)
-}
-
-func normalizeID(s string) string {
-	if n, err := strconv.Atoi(s); err == nil {
-		return fmt.Sprintf("%04d", n)
-	}
-	return s
 }

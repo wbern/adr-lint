@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -356,6 +357,24 @@ applies_to:
 		return "", err
 	}
 	return path, nil
+}
+
+// NormalizeID converts a numeric ID (in any width) to the canonical
+// 4-digit zero-padded form used by ADR filenames and the management
+// commands. Non-numeric input is returned unchanged.
+func NormalizeID(s string) string {
+	if n, err := strconv.Atoi(s); err == nil {
+		return fmt.Sprintf("%04d", n)
+	}
+	return s
+}
+
+var statusRE = regexp.MustCompile(`(?m)^status:\s*\S+\s*$`)
+
+// SetStatus rewrites the `status:` line in an ADR's YAML frontmatter,
+// leaving the rest of the file untouched.
+func SetStatus(body, newStatus string) string {
+	return statusRE.ReplaceAllString(body, "status: "+newStatus)
 }
 
 var slugSepRE = regexp.MustCompile(`[^a-z0-9]+`)

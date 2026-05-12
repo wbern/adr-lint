@@ -8,6 +8,28 @@ import (
 	"testing"
 )
 
+func TestRun_UnknownReplacementErrors(t *testing.T) {
+	dir := t.TempDir()
+	body := "---\nstatus: accepted\n---\n# 1. First\n\n## Decision\nx\n"
+	path := filepath.Join(dir, "0001-first.md")
+	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	var out bytes.Buffer
+	err := Run([]string{"1", "999"}, dir, &out)
+	if err == nil {
+		t.Fatal("expected error for missing replacement")
+	}
+	if !strings.Contains(err.Error(), "999") || !strings.Contains(err.Error(), "not found") {
+		t.Errorf("err = %q", err.Error())
+	}
+	got, _ := os.ReadFile(path)
+	if strings.Contains(string(got), "superseded") {
+		t.Errorf("source ADR should be untouched; file is:\n%s", got)
+	}
+}
+
 func TestRun_MarksSupersededAndRecordsReplacement(t *testing.T) {
 	dir := t.TempDir()
 	oldBody := "---\nstatus: accepted\n---\n# 1. First\n\n## Decision\nx\n"

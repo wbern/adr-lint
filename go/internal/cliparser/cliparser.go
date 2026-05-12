@@ -102,7 +102,7 @@ func resolveADRs(args []string, opts *types.LintOptions) error {
 		for _, id := range strings.Split(args[i], ",") {
 			id = strings.TrimSpace(id)
 			if !numericRE.MatchString(id) {
-				return fmt.Errorf(`Invalid ADR ID: "%s". ADR IDs must be numeric (e.g., --adrs 3,5,6)`, id)
+				return fmt.Errorf("invalid ADR ID %q: must be numeric (e.g., --adrs 3,5,6)", id)
 			}
 			opts.ADRs = append(opts.ADRs, id)
 		}
@@ -121,7 +121,7 @@ func resolveParallel(args []string, opts *types.LintOptions) error {
 	}
 	n, err := strconv.Atoi(val)
 	if err != nil || n < 1 {
-		return fmt.Errorf(`Invalid --parallel value: "%s". Must be a positive integer.`, val)
+		return fmt.Errorf("invalid --parallel value %q: must be a positive integer", val)
 	}
 	opts.Parallel = &n
 	return nil
@@ -131,11 +131,11 @@ func resolveProvider(args []string, opts *types.LintOptions) error {
 	for i, a := range args {
 		if a == "--provider" {
 			if i+1 >= len(args) {
-				return fmt.Errorf("Invalid provider: . Must be one of: %s", providerList())
+				return fmt.Errorf("missing --provider value: must be one of: %s", providerList())
 			}
 			val := args[i+1]
 			if !isProvider(val) {
-				return fmt.Errorf("Invalid provider: %s. Must be one of: %s", val, providerList())
+				return fmt.Errorf("invalid --provider value %q: must be one of: %s", val, providerList())
 			}
 			opts.Provider = types.Provider(val)
 			return nil
@@ -143,7 +143,7 @@ func resolveProvider(args []string, opts *types.LintOptions) error {
 		if strings.HasPrefix(a, "--provider=") {
 			val := strings.TrimPrefix(a, "--provider=")
 			if !isProvider(val) {
-				return fmt.Errorf("Invalid provider: %s. Must be one of: %s", val, providerList())
+				return fmt.Errorf("invalid --provider value %q: must be one of: %s", val, providerList())
 			}
 			opts.Provider = types.Provider(val)
 			return nil

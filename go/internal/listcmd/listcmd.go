@@ -29,7 +29,11 @@ func Run(args []string, dir string, out io.Writer) error {
 		if n, err := strconv.Atoi(id); err == nil {
 			id = fmt.Sprintf("%04d", n)
 		}
-		fmt.Fprintf(out, "%s  %-10s  %s\n", id, a.Status, a.Title)
+		title := a.Title
+		if a.SupersededBy != "" {
+			title = fmt.Sprintf("%s (by %s)", title, a.SupersededBy)
+		}
+		fmt.Fprintf(out, "%s  %-10s  %s\n", id, a.Status, title)
 	}
 	return nil
 }

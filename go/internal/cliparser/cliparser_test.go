@@ -42,7 +42,7 @@ func TestParseArgs_InvalidProviderErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for invalid provider")
 	}
-	if !strings.Contains(err.Error(), "Invalid provider: openai") {
+	if !strings.Contains(err.Error(), `invalid --provider value "openai"`) {
 		t.Errorf("err = %q", err.Error())
 	}
 }
@@ -203,7 +203,7 @@ func TestParseArgs_ParallelNonNumericErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !strings.Contains(err.Error(), `Invalid --parallel value: "abc"`) {
+	if !strings.Contains(err.Error(), `invalid --parallel value "abc"`) {
 		t.Errorf("err = %q", err.Error())
 	}
 }
@@ -213,7 +213,7 @@ func TestParseArgs_ParallelZeroErrors(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if !strings.Contains(err.Error(), `Invalid --parallel value: "0"`) {
+	if !strings.Contains(err.Error(), `invalid --parallel value "0"`) {
 		t.Errorf("err = %q", err.Error())
 	}
 }

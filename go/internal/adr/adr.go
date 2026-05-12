@@ -51,9 +51,10 @@ type ADR struct {
 	Decision    string
 	FilePath    string
 	Content     string
-	PreFilter   []string
-	EnforcedBy  *string
-	DiffContext bool
+	PreFilter    []string
+	EnforcedBy   *string
+	DiffContext  bool
+	SupersededBy string
 }
 
 // frontmatter is the raw shape of the YAML block; field types accept the
@@ -64,8 +65,9 @@ type frontmatter struct {
 	AppliesTo   []string    `yaml:"applies_to"`
 	Complexity  string      `yaml:"complexity"`
 	PreFilter   interface{} `yaml:"pre_filter"`
-	EnforcedBy  string      `yaml:"enforced_by"`
-	DiffContext *bool       `yaml:"diff_context"`
+	EnforcedBy   string      `yaml:"enforced_by"`
+	DiffContext  *bool       `yaml:"diff_context"`
+	SupersededBy string      `yaml:"superseded_by"`
 }
 
 // titleRe matches the H1 header that carries the ADR's number and title,
@@ -190,18 +192,24 @@ func ParseADR(content, filePath string) ADR {
 		diffContext = *fm.DiffContext
 	}
 
+	supersededBy := ""
+	if fm != nil {
+		supersededBy = strings.TrimSpace(fm.SupersededBy)
+	}
+
 	return ADR{
-		ID:          id,
-		Title:       title,
-		Status:      status,
-		AppliesTo:   appliesTo,
-		Complexity:  complexity,
-		Decision:    decision,
-		FilePath:    filePath,
-		Content:     body,
-		PreFilter:   preFilter,
-		EnforcedBy:  enforcedBy,
-		DiffContext: diffContext,
+		ID:           id,
+		Title:        title,
+		Status:       status,
+		AppliesTo:    appliesTo,
+		Complexity:   complexity,
+		Decision:     decision,
+		FilePath:     filePath,
+		Content:      body,
+		PreFilter:    preFilter,
+		EnforcedBy:   enforcedBy,
+		DiffContext:  diffContext,
+		SupersededBy: supersededBy,
 	}
 }
 

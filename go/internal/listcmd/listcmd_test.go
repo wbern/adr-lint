@@ -49,6 +49,20 @@ func TestRun_RejectsExtraArgs(t *testing.T) {
 	}
 }
 
+func TestRun_AnnotatesSupersededByReplacement(t *testing.T) {
+	dir := t.TempDir()
+	writeADR(t, dir, "0001-old.md", "---\nstatus: superseded\nsuperseded_by: \"0002\"\n---\n# 1. Old\n\n## Decision\nx\n")
+	writeADR(t, dir, "0002-new.md", "---\nstatus: accepted\n---\n# 2. New\n\n## Decision\ny\n")
+
+	var out bytes.Buffer
+	if err := Run(nil, dir, &out); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !strings.Contains(out.String(), "by 0002") {
+		t.Errorf("expected superseded-by annotation in output:\n%s", out.String())
+	}
+}
+
 func TestRun_ListsADRsWithIDAndTitle(t *testing.T) {
 	dir := t.TempDir()
 	writeADR(t, dir, "0001-first.md", "---\nstatus: accepted\n---\n# 1. First Decision\n\n## Decision\nx\n")

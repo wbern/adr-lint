@@ -556,6 +556,22 @@ func TestNormalizeID_PassesThroughNonNumeric(t *testing.T) {
 	}
 }
 
+func TestParseADR_SupersededByFromFrontmatter(t *testing.T) {
+	content := "---\nstatus: superseded\nsuperseded_by: \"0042\"\n---\n# 1. Old\n\n## Decision\nx\n"
+	a := ParseADR(content, "0001.md")
+	if a.SupersededBy != "0042" {
+		t.Errorf("SupersededBy = %q, want %q", a.SupersededBy, "0042")
+	}
+}
+
+func TestParseADR_SupersededByAbsentIsEmpty(t *testing.T) {
+	content := "---\nstatus: accepted\n---\n# 1. X\n\n## Decision\ny\n"
+	a := ParseADR(content, "0001.md")
+	if a.SupersededBy != "" {
+		t.Errorf("SupersededBy = %q, want empty", a.SupersededBy)
+	}
+}
+
 func TestSetStatus_ReplacesExistingLine(t *testing.T) {
 	body := "---\nstatus: accepted\napplies_to:\n  - \"**/*\"\n---\n# 1\n"
 	got, ok := SetStatus(body, "deprecated")

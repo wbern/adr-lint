@@ -81,6 +81,9 @@ var adrFileRe = regexp.MustCompile(`^\d{4}-.*\.md$`)
 func LoadADRs(dir string) ([]ADR, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("read adr dir %q: %w", dir, err)
 	}
 
@@ -111,6 +114,9 @@ func LoadADRs(dir string) ([]ADR, error) {
 func ParseADRs(dir string) ([]ADR, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("read adr dir %q: %w", dir, err)
 	}
 
@@ -336,6 +342,9 @@ func normalizePreFilter(fm *frontmatter) []string {
 // Create writes a new ADR markdown file under dir using the given title.
 // Returns the full path of the created file.
 func Create(dir, title string) (string, error) {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("create adr dir %q: %w", dir, err)
+	}
 	slug := slugify(title)
 	next := nextADRNumber(dir)
 	path := filepath.Join(dir, fmt.Sprintf("%04d-%s.md", next, slug))
@@ -372,9 +381,14 @@ func NormalizeID(s string) string {
 var statusRE = regexp.MustCompile(`(?m)^status:\s*\S+\s*$`)
 
 // SetStatus rewrites the `status:` line in an ADR's YAML frontmatter,
-// leaving the rest of the file untouched.
-func SetStatus(body, newStatus string) string {
-	return statusRE.ReplaceAllString(body, "status: "+newStatus)
+// leaving the rest of the file untouched. The bool reports whether a
+// status line was found and replaced — callers should treat false as an
+// error so they don't silently no-op on malformed frontmatter.
+func SetStatus(body, newStatus string) (string, bool) {
+	if !statusRE.MatchString(body) {
+		return body, false
+	}
+	return statusRE.ReplaceAllString(body, "status: "+newStatus), true
 }
 
 var slugSepRE = regexp.MustCompile(`[^a-z0-9]+`)

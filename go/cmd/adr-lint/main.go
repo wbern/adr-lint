@@ -36,10 +36,6 @@ var subcommands = map[string]dispatcher.Func{
 func main() {
 	git := gitcontext.NewDefaultClient()
 	adrDir := filepath.Join(git.GitRoot(), "doc", "adr")
-	if err := os.MkdirAll(adrDir, 0755); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 
 	handled, err := dispatcher.Dispatch(os.Args[1:], adrDir, os.Stdout, subcommands)
 	if err != nil {

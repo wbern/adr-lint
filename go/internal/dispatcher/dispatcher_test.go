@@ -38,6 +38,19 @@ func TestDispatch_FlagArgFallsThrough(t *testing.T) {
 	}
 }
 
+func TestDispatch_EmptyStringFirstArgFallsThrough(t *testing.T) {
+	subs := map[string]Func{"create": noopRun}
+	var out bytes.Buffer
+
+	handled, err := Dispatch([]string{""}, "/tmp", &out, subs)
+	if err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	if handled {
+		t.Error("empty-string arg should fall through, not be treated as a subcommand")
+	}
+}
+
 func TestDispatch_EmptyArgsFallThrough(t *testing.T) {
 	subs := map[string]Func{"create": noopRun}
 	var out bytes.Buffer

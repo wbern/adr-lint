@@ -23,7 +23,7 @@ func Dispatch(args []string, dir string, out io.Writer, subs map[string]Func) (b
 		return false, nil
 	}
 	first := args[0]
-	if first[0] == '-' {
+	if first == "" || first[0] == '-' {
 		return false, nil
 	}
 	if first == "help" || first == "--help" || first == "-h" {
@@ -32,7 +32,7 @@ func Dispatch(args []string, dir string, out io.Writer, subs map[string]Func) (b
 	}
 	fn, ok := subs[first]
 	if !ok {
-		return true, fmt.Errorf("unknown command: %s\n\nRun `adr-lint help` for usage.", first)
+		return true, fmt.Errorf("unknown command: %s\n\nRun `adr-lint help` for usage", first)
 	}
 	return true, fn(args[1:], dir, out)
 }

@@ -29,7 +29,10 @@ func Run(args []string, dir string, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		updated := adr.SetStatus(string(body), "deprecated")
+		updated, ok := adr.SetStatus(string(body), "deprecated")
+		if !ok {
+			return fmt.Errorf("ADR %s has no status line in frontmatter", args[0])
+		}
 		if err := os.WriteFile(a.FilePath, []byte(updated), 0644); err != nil {
 			return err
 		}

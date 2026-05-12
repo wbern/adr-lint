@@ -455,6 +455,51 @@ func TestCreate_WritesTemplateContent(t *testing.T) {
 	}
 }
 
+func TestNormalizeID_PadsNumericIDs(t *testing.T) {
+	cases := map[string]string{
+		"1":    "0001",
+		"42":   "0042",
+		"0007": "0007",
+		"1234": "1234",
+	}
+	for in, want := range cases {
+		if got := NormalizeID(in); got != want {
+			t.Errorf("NormalizeID(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestNormalizeID_PassesThroughNonNumeric(t *testing.T) {
+	if got := NormalizeID("custom-id"); got != "custom-id" {
+		t.Errorf("NormalizeID(%q) = %q, want pass-through", "custom-id", got)
+	}
+}
+
+func TestSetStatus_ReplacesExistingLine(t *testing.T) {
+	body := "---\nstatus: accepted\napplies_to:\n  - \"**/*\"\n---\n# 1\n"
+	got, ok := SetStatus(body, "deprecated")
+	if !ok {
+		t.Fatal("ok=false, want true when status line is present")
+	}
+	if !contains(got, "status: deprecated") {
+		t.Errorf("missing rewritten status line in:\n%s", got)
+	}
+	if contains(got, "status: accepted") {
+		t.Errorf("old status line still present in:\n%s", got)
+	}
+}
+
+func TestSetStatus_ReportsMissingLine(t *testing.T) {
+	body := "---\napplies_to:\n  - \"**/*\"\n---\n# 1\n"
+	got, ok := SetStatus(body, "deprecated")
+	if ok {
+		t.Error("ok=true, want false when no status line is present")
+	}
+	if got != body {
+		t.Errorf("body changed unexpectedly; got:\n%s", got)
+	}
+}
+
 // ---------- helpers ----------
 
 func mustContain(t *testing.T, haystack, needle string) {

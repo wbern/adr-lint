@@ -4,13 +4,24 @@ Automatically validates code changes against Architecture Decision Records (ADRs
 
 ## How It Works
 
-When you commit code or open a PR, this tool checks your changes against relevant ADRs. If your code violates an architectural decision, you'll get immediate feedback with explanations and suggestions.
+This tool checks staged or branch changes against relevant ADRs. If your code
+violates an architectural decision, you get feedback with explanations and
+suggestions.
 
-**The flow is automatic:**
+**Suggested workflow:**
 
-1. Pre-commit hook checks staged files against applicable ADRs
-2. CI checks all PR changes against main branch
-3. Results appear in your terminal (local) or as PR comments (CI)
+1. Install a pre-commit hook so staged files are checked against applicable
+   ADRs before each commit. A working sample lives at `scripts/pre-commit`:
+
+   ```bash
+   ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+   ```
+
+2. Wire `adr-lint --branch` into CI to check PR changes against `main`. The
+   tool depends on the Claude Code CLI for analysis, so your runner needs to
+   have it installed and authenticated — typically a self-hosted runner.
+   `.github/workflows/test.yml` in this repo runs the Go test suite; it is
+   not (yet) a reference for running `adr-lint` itself in CI.
 
 ## Managing ADRs
 
@@ -22,16 +33,18 @@ adr-lint list                              # one line per ADR (id, status, title
 adr-lint show 1                            # raw file contents
 adr-lint deprecate 1                       # flip frontmatter status: deprecated
 adr-lint supersede 1 2                     # status: superseded + superseded_by: "0002"
+adr-lint version                           # print binary version
 adr-lint help                              # subcommand reference
+adr-lint <sub> --help                      # per-subcommand usage
 ```
 
-`adr-lint create` scaffolds an ADR with the minimum frontmatter and the
-Context / Decision / Consequences sections. For a guided discovery flow that
-also drafts the body, the `/create-adr` Claude Code slash command remains
+`adr-lint create` scaffolds an ADR with the minimum frontmatter (`status:
+proposed`, `applies_to: ["**/*"]`) and the Context / Decision / Consequences
+section headers. Expand it with the optional fields you need —
+[`doc/adr/templates/template.md`](doc/adr/templates/template.md) documents
+every field the parser understands. For a guided discovery flow that also
+drafts the body, the `/create-adr` Claude Code slash command remains
 available.
-
-See [`doc/adr/templates/template.md`](doc/adr/templates/template.md) for the
-full frontmatter field reference.
 
 ## Setup
 

@@ -4,10 +4,10 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/wbern/adr-lint/go/internal/adr"
 	"github.com/wbern/adr-lint/go/internal/cache"
 	"github.com/wbern/adr-lint/go/internal/claudeclient"
 	"github.com/wbern/adr-lint/go/internal/cliparser"
@@ -21,6 +21,7 @@ import (
 	"github.com/wbern/adr-lint/go/internal/showcmd"
 	"github.com/wbern/adr-lint/go/internal/supersedecmd"
 	"github.com/wbern/adr-lint/go/internal/types"
+	"github.com/wbern/adr-lint/go/internal/versioncmd"
 )
 
 var subcommands = map[string]dispatcher.Command{
@@ -28,17 +29,13 @@ var subcommands = map[string]dispatcher.Command{
 	"show":      {Run: showcmd.Run, Usage: "adr-lint show <id>"},
 	"deprecate": {Run: deprecatecmd.Run, Usage: "adr-lint deprecate <id>"},
 	"supersede": {Run: supersedecmd.Run, Usage: "adr-lint supersede <old-id> <new-id>"},
-	"list": {
-		Run: func(_ []string, dir string, out io.Writer) error {
-			return listcmd.Run(dir, out)
-		},
-		Usage: "adr-lint list",
-	},
+	"version":   {Run: versioncmd.Run, Usage: "adr-lint version"},
+	"list":      {Run: listcmd.Run, Usage: "adr-lint list"},
 }
 
 func main() {
 	git := gitcontext.NewDefaultClient()
-	adrDir := filepath.Join(git.GitRoot(), "doc", "adr")
+	adrDir := filepath.Join(git.GitRoot(), adr.DirName)
 
 	handled, err := dispatcher.Dispatch(os.Args[1:], adrDir, os.Stdout, subcommands)
 	if err != nil {

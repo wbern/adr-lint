@@ -34,6 +34,10 @@ const (
 	ComplexityComplex   Complexity = "complex"
 )
 
+// DirName is the path (relative to the repo root) where adr-lint reads
+// and writes ADR files.
+const DirName = "doc/adr"
+
 // ADR is the parsed representation of a single ADR file. PreFilter is
 // always a slice; a single-string YAML value is normalized to a
 // one-element slice so the "any pattern matches" semantics hold.

@@ -14,8 +14,8 @@ import (
 // Run flips the ADR identified by args[0] to status "superseded" and
 // records args[1] as its replacement in the frontmatter.
 func Run(args []string, dir string, out io.Writer) error {
-	if len(args) < 2 {
-		return fmt.Errorf("missing ids: usage: adr-lint supersede <old-id> <new-id>")
+	if len(args) != 2 {
+		return fmt.Errorf("expected 2 ids: usage: adr-lint supersede <old-id> <new-id>")
 	}
 	oldID := adr.NormalizeID(args[0])
 	newID := adr.NormalizeID(args[1])

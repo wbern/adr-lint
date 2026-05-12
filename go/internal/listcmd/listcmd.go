@@ -10,8 +10,12 @@ import (
 	"github.com/wbern/adr-lint/go/internal/adr"
 )
 
-// Run prints id, status, and title for each ADR under dir.
-func Run(dir string, out io.Writer) error {
+// Run prints id, status, and title for each ADR under dir. It takes no
+// positional args; any extras are rejected.
+func Run(args []string, dir string, out io.Writer) error {
+	if len(args) > 0 {
+		return fmt.Errorf("unexpected args: usage: adr-lint list")
+	}
 	adrs, err := adr.LoadADRs(dir)
 	if err != nil {
 		return err

@@ -13,8 +13,8 @@ import (
 // Run rewrites the ADR identified by args[0] so its frontmatter status is
 // "deprecated".
 func Run(args []string, dir string, out io.Writer) error {
-	if len(args) == 0 {
-		return fmt.Errorf("missing id: usage: adr-lint deprecate <id>")
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 id: usage: adr-lint deprecate <id>")
 	}
 	want := adr.NormalizeID(args[0])
 	adrs, err := adr.LoadADRs(dir)

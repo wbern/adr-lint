@@ -15,7 +15,7 @@ import (
 func Run(args []string, dir string, out io.Writer) error {
 	title := strings.TrimSpace(strings.Join(args, " "))
 	if title == "" {
-		return fmt.Errorf("missing title: usage: adr-lint create <title>")
+		return fmt.Errorf("expected a title: usage: adr-lint create <title>")
 	}
 	path, err := adr.Create(dir, title)
 	if err != nil {

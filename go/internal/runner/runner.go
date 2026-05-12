@@ -88,7 +88,7 @@ func Run(opts types.LintOptions, deps RunDeps) (int, error) {
 	}
 
 	gitRoot := deps.Git.GitRoot()
-	adrDir := filepath.Join(gitRoot, "doc/adr")
+	adrDir := filepath.Join(gitRoot, adr.DirName)
 
 	allChangedFiles, exit, err := selectChangedFiles(opts, deps.Git, gitRoot, targetRef, log)
 	if exit != nil || err != nil {

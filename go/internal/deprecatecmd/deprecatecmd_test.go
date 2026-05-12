@@ -8,6 +8,38 @@ import (
 	"testing"
 )
 
+func TestRun_MissingIDErrors(t *testing.T) {
+	var out bytes.Buffer
+	err := Run(nil, t.TempDir(), &out)
+	if err == nil {
+		t.Fatal("expected error for missing id")
+	}
+}
+
+func TestRun_ExtraArgsErrors(t *testing.T) {
+	var out bytes.Buffer
+	err := Run([]string{"1", "2"}, t.TempDir(), &out)
+	if err == nil {
+		t.Fatal("expected error for extra args")
+	}
+}
+
+func TestRun_UnknownIDErrors(t *testing.T) {
+	dir := t.TempDir()
+	body := "---\nstatus: accepted\n---\n# 1. First\n\n## Decision\nx\n"
+	if err := os.WriteFile(filepath.Join(dir, "0001-first.md"), []byte(body), 0644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	var out bytes.Buffer
+	err := Run([]string{"99"}, dir, &out)
+	if err == nil {
+		t.Fatal("expected error for unknown id")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("err = %q, want mention of not found", err.Error())
+	}
+}
+
 func TestRun_FlipsStatusToDeprecated(t *testing.T) {
 	dir := t.TempDir()
 	body := "---\nstatus: accepted\n---\n# 1. First\n\n## Decision\nx\n"

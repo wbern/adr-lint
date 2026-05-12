@@ -50,7 +50,7 @@ func Run(args []string, dir string, out io.Writer) error {
 			return fmt.Errorf("ADR %s has no status line in frontmatter", args[0])
 		}
 		updated = addOrReplaceSupersededBy(updated, newID)
-		if err := os.WriteFile(a.FilePath, []byte(updated), 0644); err != nil {
+		if err := adr.WriteFileAtomic(a.FilePath, []byte(updated), 0644); err != nil {
 			return err
 		}
 		fmt.Fprintf(out, "Superseded %s by %s\n", oldID, newID)

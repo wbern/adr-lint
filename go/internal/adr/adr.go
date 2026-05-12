@@ -344,15 +344,27 @@ func normalizePreFilter(fm *frontmatter) []string {
 }
 
 // Create writes a new ADR markdown file under dir using the given title.
-// Returns the full path of the created file.
+// Returns the full path of the created file. Concurrent callers race-free
+// each other on number allocation: we open with O_EXCL and bump on
+// collision so two parallel `adr-lint create` invocations get distinct
+// numbers.
 func Create(dir, title string) (string, error) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("create adr dir %q: %w", dir, err)
 	}
 	slug := slugify(title)
-	next := nextADRNumber(dir)
-	path := filepath.Join(dir, fmt.Sprintf("%04d-%s.md", next, slug))
-	body := fmt.Sprintf(`---
+	base := nextADRNumber(dir)
+	for attempt := 0; attempt < 1024; attempt++ {
+		n := base + attempt
+		path := filepath.Join(dir, fmt.Sprintf("%04d-%s.md", n, slug))
+		f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
+		if err != nil {
+			if os.IsExist(err) {
+				continue
+			}
+			return "", err
+		}
+		body := fmt.Sprintf(`---
 status: proposed
 applies_to:
   - "**/*"
@@ -365,11 +377,49 @@ applies_to:
 ## Decision
 
 ## Consequences
-`, next, title)
-	if err := os.WriteFile(path, []byte(body), 0644); err != nil {
-		return "", err
+`, n, title)
+		if _, werr := f.Write([]byte(body)); werr != nil {
+			f.Close()
+			return "", werr
+		}
+		if cerr := f.Close(); cerr != nil {
+			return "", cerr
+		}
+		return path, nil
 	}
-	return path, nil
+	return "", fmt.Errorf("could not allocate an ADR number under %q after 1024 attempts", dir)
+}
+
+// WriteFileAtomic writes data to path via a sibling temp file followed by
+// rename(2). Crashing or being killed mid-write leaves either the old
+// file or the new file in place — never a half-written one.
+func WriteFileAtomic(path string, data []byte, perm os.FileMode) error {
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".adr-lint-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	cleanup := func() { _ = os.Remove(tmpPath) }
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		cleanup()
+		return err
+	}
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close()
+		cleanup()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		cleanup()
+		return err
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		cleanup()
+		return err
+	}
+	return nil
 }
 
 // NormalizeID converts a numeric ID (in any width) to the canonical

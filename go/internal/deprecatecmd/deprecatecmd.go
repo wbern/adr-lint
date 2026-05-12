@@ -33,7 +33,7 @@ func Run(args []string, dir string, out io.Writer) error {
 		if !ok {
 			return fmt.Errorf("ADR %s has no status line in frontmatter", args[0])
 		}
-		if err := os.WriteFile(a.FilePath, []byte(updated), 0644); err != nil {
+		if err := adr.WriteFileAtomic(a.FilePath, []byte(updated), 0644); err != nil {
 			return err
 		}
 		fmt.Fprintf(out, "Deprecated %s\n", a.FilePath)

@@ -1,9 +1,11 @@
 package adr
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 	"testing"
 )
 
@@ -451,6 +453,85 @@ func TestCreate_WritesTemplateContent(t *testing.T) {
 	} {
 		if !contains(s, want) {
 			t.Errorf("missing %q in:\n%s", want, s)
+		}
+	}
+}
+
+func TestWriteFileAtomic_WritesContentAndMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.txt")
+	if err := WriteFileAtomic(path, []byte("hello"), 0644); err != nil {
+		t.Fatalf("WriteFileAtomic: %v", err)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if string(body) != "hello" {
+		t.Errorf("body = %q, want %q", body, "hello")
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if info.Mode().Perm() != 0644 {
+		t.Errorf("mode = %v, want 0644", info.Mode().Perm())
+	}
+}
+
+func TestWriteFileAtomic_LeavesNoTempArtifacts(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "file.txt")
+	if err := WriteFileAtomic(path, []byte("hi"), 0644); err != nil {
+		t.Fatalf("WriteFileAtomic: %v", err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("readdir: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "file.txt" {
+		names := []string{}
+		for _, e := range entries {
+			names = append(names, e.Name())
+		}
+		t.Errorf("expected only file.txt, got %v", names)
+	}
+}
+
+func TestCreate_ConcurrentCallsAllocateDistinctPaths(t *testing.T) {
+	dir := t.TempDir()
+	const N = 20
+	paths := make([]string, N)
+	errs := make([]error, N)
+	var wg sync.WaitGroup
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			p, err := Create(dir, "Same Title")
+			paths[i] = p
+			errs[i] = err
+		}(i)
+	}
+	wg.Wait()
+	seen := map[string]int{}
+	for i, p := range paths {
+		if errs[i] != nil {
+			t.Errorf("call %d: %v", i, errs[i])
+			continue
+		}
+		seen[p]++
+	}
+	for p, n := range seen {
+		if n > 1 {
+			t.Errorf("path %q allocated %d times", p, n)
+		}
+	}
+	if len(seen) != N {
+		t.Errorf("got %d distinct paths, want %d", len(seen), N)
+		// help debugging
+		for p := range seen {
+			fmt.Println(" ", p)
 		}
 	}
 }

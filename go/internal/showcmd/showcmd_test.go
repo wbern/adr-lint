@@ -20,6 +20,22 @@ func TestRun_UnknownIDErrors(t *testing.T) {
 	}
 }
 
+func TestRun_MissingIDErrors(t *testing.T) {
+	var out bytes.Buffer
+	err := Run(nil, t.TempDir(), &out)
+	if err == nil {
+		t.Fatal("expected error for missing id")
+	}
+}
+
+func TestRun_ExtraArgsErrors(t *testing.T) {
+	var out bytes.Buffer
+	err := Run([]string{"1", "2"}, t.TempDir(), &out)
+	if err == nil {
+		t.Fatal("expected error for extra args")
+	}
+}
+
 func TestRun_PrintsADRBodyByID(t *testing.T) {
 	dir := t.TempDir()
 	body := "---\nstatus: accepted\n---\n# 1. First Decision\n\n## Context\nbecause\n\n## Decision\ndo the thing\n"

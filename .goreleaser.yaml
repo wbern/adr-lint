@@ -1,0 +1,78 @@
+# goreleaser config — runs on tag push (release-please creates the tag when
+# its Release PR merges). Builds cross-platform binaries, appends them to
+# the GitHub Release that release-please already created, and updates the
+# Homebrew formula in wbern/homebrew-tap.
+#
+# Local validation: goreleaser check
+# Local dry-run:    goreleaser release --snapshot --clean
+
+version: 2
+
+project_name: adr-lint
+
+before:
+  hooks:
+    - go -C go mod tidy
+
+builds:
+  - id: adr-lint
+    main: ./cmd/adr-lint
+    dir: go
+    binary: adr-lint
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/wbern/adr-lint/go/internal/versioncmd.version={{ .Version }}
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}macos
+      {{- else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}arm64
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+      - CHANGELOG.md
+      - doc/adr/templates/template.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot+{{ .ShortCommit }}"
+
+changelog:
+  # release-please already wrote the changelog into the GitHub Release body.
+  # Disable goreleaser's auto-generated section so we don't double up.
+  disable: true
+
+release:
+  # release-please creates the GitHub Release first; we append artifacts.
+  mode: append
+  draft: false
+  prerelease: auto
+
+brews:
+  - name: adr-lint
+    repository:
+      owner: wbern
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
+    homepage: "https://github.com/wbern/adr-lint"
+    description: "Automatically validates code changes against Architecture Decision Records using Claude."
+    license: "MIT"
+    install: |
+      bin.install "adr-lint"
+    test: |
+      system "#{bin}/adr-lint", "version"

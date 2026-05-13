@@ -1,0 +1,2 @@
+# Compiled binaries from `go build` at the package root.
+/adr-lint

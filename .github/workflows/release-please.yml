@@ -26,17 +26,27 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
 
   auto-merge:
-    # Trunk-based: auto-merge the Release PR as soon as CI passes.
+    # Trunk-based: squash-merge any open Release PR immediately.
     # The PR exists only as a one-step staging area, not a review gate.
+    # We look it up by label rather than relying on release-please's `pr`
+    # output, because that output is empty on runs where release-please
+    # didn't update the PR (e.g. first run after switching tokens).
     needs: release-please
-    if: ${{ needs.release-please.outputs.pr }}
+    if: ${{ !needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
     steps:
       - env:
           GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-          PR_JSON: ${{ needs.release-please.outputs.pr }}
         run: |
-          pr_number=$(echo "$PR_JSON" | jq -r '.number')
+          pr_number=$(gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --label "autorelease: pending" \
+            --json number --jq '.[0].number')
+          if [ -z "$pr_number" ] || [ "$pr_number" = "null" ]; then
+            echo "No open release PR to merge."
+            exit 0
+          fi
           # Direct squash-merge. The Release PR only touches CHANGELOG.md and
           # the manifest — code already passed CI on main before reaching here.
           gh pr merge "$pr_number" \

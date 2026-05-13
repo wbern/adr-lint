@@ -43,7 +43,9 @@ already has.
 # 1. Install + log in to the Claude Code CLI (one-time, no API key needed)
 #    https://claude.com/claude-code
 
-# 2. Install adr-lint
+# 2. Install adr-lint (pick one)
+brew install wbern/tap/adr-lint
+# or:
 go install github.com/wbern/adr-lint/go/cmd/adr-lint@latest
 
 # 3. Write your first ADR
@@ -113,7 +115,7 @@ adr-lint --per-file            # one chunk per file (slower, more precise)
 
 ## Integration
 
-### Pre-commit hook
+### Pre-commit hook (adopting adr-lint in your project)
 
 The sample at [`scripts/pre-commit`](scripts/pre-commit) runs `adr-lint`
 on staged files and exits cleanly if the binary isn't on PATH (so
@@ -123,14 +125,20 @@ collaborators without it aren't blocked).
 ln -s ../../scripts/pre-commit .git/hooks/pre-commit
 ```
 
+This is the zero-dependency option for using adr-lint in **your** repo.
+For working on adr-lint itself, see [CONTRIBUTING.md](CONTRIBUTING.md) —
+this repo uses lefthook to orchestrate adr-lint alongside gofmt,
+golangci-lint, and gitleaks.
+
 ### CI (PR review)
 
 `adr-lint --branch` is designed for CI: it lints the entire diff that
 would land in the PR, no staging required. The runner needs the Claude
 Code CLI installed and authenticated, which in practice means a
-self-hosted runner. The `.github/workflows/test.yml` in this repo only
-runs the Go test suite — it's not a reference for running `adr-lint`
-itself in CI.
+self-hosted runner. The `.github/workflows/ci.yml` in this repo only
+runs the Go test suite and linters — it's not a reference for running
+`adr-lint` itself in CI (see [ADR-0003](doc/adr/0003-dogfood-adr-lint-locally-not-in-ci.md)
+for why this repo doesn't dogfood adr-lint in CI).
 
 ## Focused demos
 
@@ -146,3 +154,9 @@ single slice:
 For a guided discovery flow that also drafts the ADR body, the
 `/create-adr` Claude Code slash command remains available alongside the
 CLI scaffold.
+
+## Contributing
+
+Working on adr-lint itself? See [CONTRIBUTING.md](CONTRIBUTING.md) for
+local setup (lefthook, golangci-lint, gitleaks), commit message rules,
+and how this repo dogfoods its own linter.

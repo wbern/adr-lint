@@ -83,16 +83,48 @@ The `pre-push` hook runs the full suite before letting you push.
 
 ## Dogfooding adr-lint on adr-lint
 
-This repo is its own first user. After a non-trivial change, run the
-linter against staged work before pushing:
+This repo is its own first user. The check is **not** wired into a git
+hook on purpose (every run is a paid Claude call — see
+[ADR-0003](doc/adr/0003-dogfood-adr-lint-locally-not-in-ci.md)), so it's
+a deliberate manual step in the commit flow.
+
+### Recommended commit flow
 
 ```bash
 git add <files>
-adr-lint            # no subcommand = lint the staged diff
+adr-lint                          # check staged diff against all applicable ADRs
+git commit -m "feat: ..."         # lefthook then runs gofmt/golangci-lint/gitleaks
 ```
 
-We deliberately do **not** run this in CI — every check costs real
-Claude API spend, and the trunk-based release flow ships fast enough
-that bloating CI with paid steps isn't worth it. The check is the
-maintainer's responsibility. See
-[ADR-0003](doc/adr/0003-dogfood-adr-lint-locally-not-in-ci.md).
+`adr-lint` operates on the staged diff by default. It picks up only the
+ADRs whose `applies_to` globs match the staged files, then for each one
+either short-circuits via `pre_filter` (zero cost) or calls Claude to
+evaluate. Output is file:line for each violation, with a concrete fix.
+
+If a check fails: edit the file, `git add` again, re-run `adr-lint`,
+then `git commit`. Lefthook's gofmt/golangci/gitleaks pre-commit hooks
+are independent and run on every commit — they're free, they always run.
+
+### Other modes
+
+```bash
+adr-lint -v                       # verbose: show every applicable ADR
+                                  # (passed + failed), with pre-filter reasons
+adr-lint --branch origin/main     # lint everything that has diverged from main
+                                  # — useful before pushing a long-running branch
+adr-lint --files path/to/file.go  # lint a specific file even if not staged
+```
+
+### When to skip
+
+`adr-lint` makes a real Claude call per applicable ADR (minus pre-filter
+hits). Skip it for changes that obviously can't violate an architectural
+constraint:
+
+- Pure formatting/whitespace
+- README/docs typo fixes
+- Comment-only edits
+
+Use judgement. The ADRs themselves are short — if you've read them
+recently and the change clearly doesn't touch the surface they govern,
+just commit.

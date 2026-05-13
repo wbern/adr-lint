@@ -13,68 +13,87 @@ pre_filter:
 
 ## Context
 
-adr-lint is the project's own architectural linter. Running it on this
-repo's pull requests would close the loop — but every invocation issues
-real Claude API calls, which cost real money. CI cost was the explicit
-constraint when this decision was made.
+adr-lint is the project's own architectural linter. Each run shells
+out to the Claude Code CLI, which authenticates against the user's
+Claude Code subscription. The subscription is **flat-rate** — there's
+no per-call dollar charge — but every run does consume that account's
+rate-limit quota.
 
-Two ways to enforce ADRs:
+Two enforcement loci to consider:
 
-- **In CI** — every PR triggers `adr-lint` against the diff. Catches
-  violations from any contributor automatically. Costs money on every
-  push, including no-op pushes (docs typos, CI tweaks, dependabot).
-- **Locally** — the maintainer runs `adr-lint` against staged changes
-  before pushing. Zero CI spend. Relies on discipline, but works fine
-  for a single-maintainer project.
+- **In CI** — every PR triggers `adr-lint`. To work, CI needs an auth
+  token for *someone's* Claude Code subscription stashed as a repo
+  secret. That account's quota is then burned by every push: feature
+  branches, dependabot bumps, docs typo fixes, force-pushes during PR
+  iteration. PR latency goes up by however long the Claude calls take.
+  Also: external contributors' PRs would consume the maintainer's
+  quota, with no rate limiting beyond what the subscription enforces.
+- **Locally (manual)** — the maintainer runs `adr-lint` against
+  staged changes before committing. Uses their own logged-in Claude
+  Code session. Tight feedback loop, no shared secrets, but relies on
+  discipline.
+- **Locally (lefthook pre-commit hook)** — same as manual but
+  automatic. Same auth model. Every commit pays a quota cost, but
+  only for the committer's own work.
 
 ## Decision
 
-We will run **adr-lint locally only**, not in CI. The maintainer is
-expected to run it against staged changes before pushing significant
-work. The exact local invocation is documented in `CONTRIBUTING.md`.
+We will run **adr-lint locally only**, never in CI.
+
+The local hook integration is **opt-in**, not enabled by default. The
+canonical local invocation is a manual `adr-lint` between `git add`
+and `git commit`, documented in `CONTRIBUTING.md`. Contributors who
+want it wired into `pre-commit` can flip the lefthook command on by
+setting `ADR_LINT_HOOK=1` in their shell environment.
 
 **Forbidden:**
 
 ```yaml
 # Do not add adr-lint as a CI job.
-# Do not wire adr-lint into lefthook pre-commit / pre-push either —
-# pre-push fires on every push and would surprise-bill the maintainer.
 jobs:
   adr-lint:
     steps:
-      - run: adr-lint check
+      - env:
+          ANTHROPIC_API_KEY: ${{ secrets.MAINTAINER_CLAUDE_TOKEN }}
+        run: adr-lint
 ```
 
-**Acceptable today:**
+**Acceptable:**
 
 ```bash
-# Run on demand before pushing a feature commit.
+# Manual flow (default).
 git add <files>
-adr-lint          # no subcommand = lint the staged diff
+adr-lint
+git commit -m "feat: ..."
+
+# Or opt-in to the pre-commit hook for the same flow without the manual step:
+export ADR_LINT_HOOK=1
+# adr-lint now runs automatically as part of `git commit`.
 ```
 
-If this project gains contributors or moves to a model where CI spend
-is acceptable, supersede this ADR — do not silently flip the switch by
-adding a workflow.
+If this project ever gains real contributors, supersede this ADR
+rather than silently adding a CI workflow — the auth-token-in-secret
+question deserves a fresh decision.
 
 ## Consequences
 
 **Positive:**
-- Zero ongoing CI cost for ADR enforcement.
-- Lefthook + golangci-lint + gitleaks still gate every commit; the
-  ADR check is the only intentionally manual gate.
+- No shared Claude Code auth token in CI secrets.
+- No PR latency from Claude calls.
+- Dependabot / docs / chore pushes don't burn quota.
+- Maintainer keeps full control of when their subscription is consumed.
 
 **Negative:**
 - A violation introduced in a commit can land on `main` if the
-  maintainer forgets to run the check.
+  maintainer forgets to run the check (manual flow) or hasn't enabled
+  the hook (`ADR_LINT_HOOK=1`).
 - New contributors won't get automatic ADR feedback on their PRs.
 
 **Neutral:**
-- The CI infrastructure (`ci.yml`) is unchanged; the absence of an
-  `adr-lint` job is the decision itself.
+- The opt-in env-var pattern means the hook is documented and ready,
+  but disabled by default — flipping it on is a one-line shell rc edit.
 
 ## References
 
 - ADR-0001 (Claude is the only LLM provider) — establishes that every
-  run is a Claude Code subscription call, which is the cost being
-  avoided here.
+  run is a Claude Code subscription call.

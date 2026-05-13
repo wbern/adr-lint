@@ -43,6 +43,16 @@ pre-commit:
       run: golangci-lint run --new-from-rev=HEAD --fix=false
     gitleaks:
       run: gitleaks protect --staged --redact --no-banner
+    adr-lint:
+      # Opt-in: set ADR_LINT_HOOK=1 in your shell rc to enable.
+      # Skipped silently otherwise. See ADR-0003 for the rationale —
+      # the check uses the maintainer's Claude Code subscription quota
+      # and is intentionally not on by default.
+      run: |
+        if [ "$ADR_LINT_HOOK" != "1" ]; then
+          exit 0
+        fi
+        adr-lint
 
 pre-push:
   commands:

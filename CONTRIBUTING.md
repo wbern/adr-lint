@@ -83,18 +83,35 @@ The `pre-push` hook runs the full suite before letting you push.
 
 ## Dogfooding adr-lint on adr-lint
 
-This repo is its own first user. The check is **not** wired into a git
-hook on purpose (every run is a paid Claude call — see
-[ADR-0003](doc/adr/0003-dogfood-adr-lint-locally-not-in-ci.md)), so it's
-a deliberate manual step in the commit flow.
+This repo is its own first user. The check is **off in CI by design**
+(see [ADR-0003](doc/adr/0003-dogfood-adr-lint-locally-not-in-ci.md))
+but available locally either manually or as an opt-in pre-commit hook.
 
-### Recommended commit flow
+### Manual flow (default)
 
 ```bash
 git add <files>
 adr-lint                          # check staged diff against all applicable ADRs
 git commit -m "feat: ..."         # lefthook then runs gofmt/golangci-lint/gitleaks
 ```
+
+### Opt-in pre-commit hook
+
+If you'd rather not remember to run `adr-lint` between `add` and
+`commit`, enable the hook by exporting one env var in your shell rc:
+
+```bash
+# ~/.zshrc or ~/.bashrc
+export ADR_LINT_HOOK=1
+```
+
+After that, `git commit` will run `adr-lint` automatically as part of
+the pre-commit checks. To temporarily skip a commit's ADR check
+without unsetting the var: `LEFTHOOK_EXCLUDE=adr-lint git commit ...`.
+
+The hook is off by default because every run consumes Claude Code
+subscription quota — opting in is a personal choice about how much of
+that quota you want to spend on commit-time feedback.
 
 `adr-lint` operates on the staged diff by default. It picks up only the
 ADRs whose `applies_to` globs match the staged files, then for each one

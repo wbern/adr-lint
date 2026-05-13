@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.3](https://github.com/wbern/adr-lint/compare/v0.1.2...v0.1.3) (2026-05-13)
+
+
+### Bug Fixes
+
+* **hooks:** make adr-lint pre-commit on by default, add skip env var ([d35c718](https://github.com/wbern/adr-lint/commit/d35c718bc7a52b0e99b06047bfe8624f5ea845f3))
+
 ## [0.1.2](https://github.com/wbern/adr-lint/compare/v0.1.1...v0.1.2) (2026-05-13)
 
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/wbern/adr-lint/compare/v0.1.1...v0.1.2) (2026-05-13)
+
+
+### Bug Fixes
+
+* **release-please:** hide docs and refactor from changelog ([bea9110](https://github.com/wbern/adr-lint/commit/bea911085ad61a86ef9f31bf36e8465eb8b0e9d4))
+
 ## [0.1.1](https://github.com/wbern/adr-lint/compare/v0.1.0...v0.1.1) (2026-05-13)
 
 

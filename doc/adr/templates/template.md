@@ -1,6 +1,6 @@
 ---
 # Required. One of: proposed | accepted | deprecated | superseded.
-status: accepted
+status: proposed
 
 # Optional. Free-form; not parsed by the linter.
 date: YYYY-MM-DD
@@ -37,7 +37,7 @@ diff_context: true
 # superseded_by: "0042"
 ---
 
-# N. Title
+# {{number}}. {{title}}
 
 ## Context
 

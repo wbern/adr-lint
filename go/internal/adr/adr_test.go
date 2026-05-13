@@ -206,6 +206,24 @@ func TestParseADR_StatusFromFrontmatter(t *testing.T) {
 	}
 }
 
+func TestParseADR_StatusRejectedFromFrontmatter(t *testing.T) {
+	content := "---\nstatus: rejected\n---\n\n" +
+		"# 7. Bad Idea\n\n## Decision\n\nx\n"
+	adr := ParseADR(content, "0007-bad.md")
+	if adr.Status != StatusRejected {
+		t.Errorf("Status = %q, want rejected", adr.Status)
+	}
+}
+
+func TestParseADR_StatusWithdrawnFromFrontmatter(t *testing.T) {
+	content := "---\nstatus: withdrawn\n---\n\n" +
+		"# 8. Pulled Back\n\n## Decision\n\nx\n"
+	adr := ParseADR(content, "0008-pulled.md")
+	if adr.Status != StatusWithdrawn {
+		t.Errorf("Status = %q, want withdrawn", adr.Status)
+	}
+}
+
 func TestParseADR_StatusDefaultsAccepted(t *testing.T) {
 	content := "---\ncomplexity: lite\n---\n\n" +
 		"# 2. Use Testify\n\n## Decision\n\nCheck for gomock.\n"
@@ -322,6 +340,27 @@ func TestParseADRs_FiltersDeprecatedAndSuperseded(t *testing.T) {
 	}
 	if len(adrs) != 2 {
 		t.Errorf("len(adrs) = %d, want 2 (ids: %v)", len(adrs), idsOf(adrs))
+	}
+}
+
+func TestParseADRs_FiltersRejectedAndWithdrawn(t *testing.T) {
+	dir := writeADRs(t, map[string]string{
+		"0001-keep.md":      "---\nstatus: accepted\n---\n\n# 1. Keep\n\n## Decision\n\nDo it.\n",
+		"0002-rejected.md":  "---\nstatus: rejected\n---\n\n# 2. No\n\n## Decision\n\nNo.\n",
+		"0003-withdrawn.md": "---\nstatus: withdrawn\n---\n\n# 3. Pulled\n\n## Decision\n\nPulled.\n",
+	})
+
+	adrs, err := ParseADRs(dir)
+	if err != nil {
+		t.Fatalf("ParseADRs: %v", err)
+	}
+	for _, a := range adrs {
+		if a.Status == StatusRejected || a.Status == StatusWithdrawn {
+			t.Errorf("ParseADRs returned %s ADR %s", a.Status, a.ID)
+		}
+	}
+	if len(adrs) != 1 {
+		t.Errorf("len(adrs) = %d, want 1 (ids: %v)", len(adrs), idsOf(adrs))
 	}
 }
 
@@ -454,6 +493,34 @@ func TestCreate_WritesTemplateContent(t *testing.T) {
 		if !contains(s, want) {
 			t.Errorf("missing %q in:\n%s", want, s)
 		}
+	}
+}
+
+func TestCreate_UsesDiskTemplateWhenPresent(t *testing.T) {
+	dir := t.TempDir()
+	tmplDir := filepath.Join(dir, "templates")
+	if err := os.MkdirAll(tmplDir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	tmpl := "---\nstatus: proposed\n---\n\n# {{number}}. {{title}}\n\nSENTINEL_BODY_MARKER\n"
+	if err := os.WriteFile(filepath.Join(tmplDir, "template.md"), []byte(tmpl), 0644); err != nil {
+		t.Fatalf("seed template: %v", err)
+	}
+
+	path, err := Create(dir, "Use Disk Template")
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	s := string(body)
+	if !contains(s, "SENTINEL_BODY_MARKER") {
+		t.Errorf("on-disk template should be used; body:\n%s", s)
+	}
+	if !contains(s, "# 1. Use Disk Template") {
+		t.Errorf("placeholders should be substituted; body:\n%s", s)
 	}
 }
 

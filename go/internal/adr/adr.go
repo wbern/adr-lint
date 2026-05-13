@@ -22,6 +22,8 @@ const (
 	StatusProposed   Status = "proposed"
 	StatusDeprecated Status = "deprecated"
 	StatusSuperseded Status = "superseded"
+	StatusRejected   Status = "rejected"
+	StatusWithdrawn  Status = "withdrawn"
 )
 
 // Complexity selects the model tier used to lint against this ADR.
@@ -145,7 +147,8 @@ func ParseADRs(dir string) ([]ADR, error) {
 		if strings.TrimSpace(adr.Decision) == "" {
 			continue
 		}
-		if adr.Status == StatusDeprecated || adr.Status == StatusSuperseded {
+		if adr.Status == StatusDeprecated || adr.Status == StatusSuperseded ||
+			adr.Status == StatusRejected || adr.Status == StatusWithdrawn {
 			continue
 		}
 		if adr.EnforcedBy != nil {
@@ -227,7 +230,7 @@ func parseTitle(body, filePath string) (id, title string) {
 
 func parseStatusValue(v string) Status {
 	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "accepted", "proposed", "deprecated", "superseded":
+	case "accepted", "proposed", "deprecated", "superseded", "rejected", "withdrawn":
 		return Status(strings.ToLower(strings.TrimSpace(v)))
 	}
 	return StatusAccepted
@@ -372,20 +375,7 @@ func Create(dir, title string) (string, error) {
 			}
 			return "", err
 		}
-		body := fmt.Sprintf(`---
-status: proposed
-applies_to:
-  - "**/*"
----
-
-# %d. %s
-
-## Context
-
-## Decision
-
-## Consequences
-`, n, title)
+		body := renderTemplate(dir, n, title)
 		if _, werr := f.Write([]byte(body)); werr != nil {
 			f.Close()
 			return "", werr
@@ -396,6 +386,34 @@ applies_to:
 		return path, nil
 	}
 	return "", fmt.Errorf("could not allocate an ADR number under %q after 1024 attempts", dir)
+}
+
+const defaultTemplate = `---
+status: proposed
+applies_to:
+  - "**/*"
+---
+
+# {{number}}. {{title}}
+
+## Context
+
+## Decision
+
+## Consequences
+`
+
+// renderTemplate returns the new-ADR body for number n. If
+// <dir>/templates/template.md exists it's used; otherwise defaultTemplate
+// applies. {{number}} and {{title}} placeholders are substituted in both.
+func renderTemplate(dir string, n int, title string) string {
+	tmpl := defaultTemplate
+	if b, err := os.ReadFile(filepath.Join(dir, "templates", "template.md")); err == nil {
+		tmpl = string(b)
+	}
+	tmpl = strings.ReplaceAll(tmpl, "{{number}}", strconv.Itoa(n))
+	tmpl = strings.ReplaceAll(tmpl, "{{title}}", title)
+	return tmpl
 }
 
 // WriteFileAtomic writes data to path via a sibling temp file followed by

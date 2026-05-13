@@ -31,20 +31,24 @@ The CLI has bd-style subcommands for managing the ADRs in `doc/adr/`:
 adr-lint create "Use Testify for tests"   # scaffold doc/adr/NNNN-use-testify-for-tests.md
 adr-lint list                              # one line per ADR (id, status, title)
 adr-lint show 1                            # raw file contents
-adr-lint deprecate 1                       # flip frontmatter status: deprecated
+adr-lint accept 1                          # flip frontmatter status: accepted
+adr-lint reject 1                          # status: rejected
+adr-lint withdraw 1                        # status: withdrawn
+adr-lint deprecate 1                       # status: deprecated
 adr-lint supersede 1 2                     # status: superseded + superseded_by: "0002"
+adr-lint validate                          # check cross-refs, IDs, status invariants
 adr-lint version                           # print binary version
 adr-lint help                              # subcommand reference
 adr-lint <sub> --help                      # per-subcommand usage
 ```
 
-`adr-lint create` scaffolds an ADR with the minimum frontmatter (`status:
-proposed`, `applies_to: ["**/*"]`) and the Context / Decision / Consequences
-section headers. Expand it with the optional fields you need —
-[`doc/adr/templates/template.md`](doc/adr/templates/template.md) documents
-every field the parser understands. For a guided discovery flow that also
-drafts the body, the `/create-adr` Claude Code slash command remains
-available.
+`adr-lint create` scaffolds an ADR from
+[`doc/adr/templates/template.md`](doc/adr/templates/template.md) when present
+(substituting `{{number}}` and `{{title}}`), falling back to a built-in
+minimum frontmatter (`status: proposed`, `applies_to: ["**/*"]`) otherwise.
+The template documents every field the parser understands. For a guided
+discovery flow that also drafts the body, the `/create-adr` Claude Code slash
+command remains available.
 
 ## Setup
 

@@ -1,0 +1,12 @@
+# gitleaks config. Inherits the default rule set; the [allowlist] below
+# scopes out files where false-positives are common.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-specific allowlist"
+paths = [
+  '''docs/demo-.*\.cast$''',  # asciinema casts contain shell prompts that look like secrets to some heuristics
+  '''go\.sum$''',             # module checksums
+]

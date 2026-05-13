@@ -1,0 +1,51 @@
+# Local git-hook orchestration. Install with: lefthook install
+#
+# Get lefthook itself: brew install lefthook (or go install github.com/evilmartians/lefthook@latest)
+#
+# This file is the source of truth for what runs locally before commits land.
+# CI re-runs the same checks on PRs so a missing local install can't bypass them.
+
+commit-msg:
+  commands:
+    conventional:
+      # Conventional Commits: <type>(<optional scope>)<optional !>: <subject>
+      # Allowed types match release-please's defaults so versioning stays consistent.
+      run: |
+        if ! head -1 {1} | grep -qE '^(feat|fix|chore|docs|refactor|test|build|ci|perf|style|revert)(\([^)]+\))?!?: .+'; then
+          echo "✖ commit message does not follow Conventional Commits"
+          echo "  expected: <type>(<scope>)?!?: <subject>"
+          echo "  types:    feat | fix | chore | docs | refactor | test | build | ci | perf | style | revert"
+          echo ""
+          echo "  example:  feat(create): add --template flag"
+          echo "  example:  fix(runner): handle empty diff"
+          echo "  example:  feat(api)!: rename --files to --paths (breaking)"
+          exit 1
+        fi
+
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: |
+        unformatted=$(gofmt -l {staged_files})
+        if [ -n "$unformatted" ]; then
+          echo "✖ gofmt would reformat these files:"
+          echo "$unformatted"
+          echo "  fix: gofmt -w {staged_files}"
+          exit 1
+        fi
+    golangci-lint:
+      glob: "*.go"
+      root: "go/"
+      # --new-from-rev=HEAD makes pre-commit fast: only lint changes vs HEAD,
+      # not the whole tree. CI runs the full lint.
+      run: golangci-lint run --new-from-rev=HEAD --fix=false
+    gitleaks:
+      run: gitleaks protect --staged --redact --no-banner
+
+pre-push:
+  commands:
+    tests:
+      root: "go/"
+      run: go test ./...

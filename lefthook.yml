@@ -44,12 +44,11 @@ pre-commit:
     gitleaks:
       run: gitleaks protect --staged --redact --no-banner
     adr-lint:
-      # Opt-in: set ADR_LINT_HOOK=1 in your shell rc to enable.
-      # Skipped silently otherwise. See ADR-0003 for the rationale —
-      # the check uses the maintainer's Claude Code subscription quota
-      # and is intentionally not on by default.
+      # On by default — this repo dogfoods its own linter. Skip a single
+      # commit with ADR_LINT_SKIP=1 git commit ..., or LEFTHOOK_EXCLUDE=adr-lint
+      # git commit ... See ADR-0003 for the rationale.
       run: |
-        if [ "$ADR_LINT_HOOK" != "1" ]; then
+        if [ "$ADR_LINT_SKIP" = "1" ]; then
           exit 0
         fi
         adr-lint

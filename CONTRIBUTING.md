@@ -85,42 +85,35 @@ The `pre-push` hook runs the full suite before letting you push.
 
 This repo is its own first user. The check is **off in CI by design**
 (see [ADR-0003](doc/adr/0003-dogfood-adr-lint-locally-not-in-ci.md))
-but available locally either manually or as an opt-in pre-commit hook.
+but **on by default locally** as a lefthook pre-commit step.
 
-### Manual flow (default)
+### Default flow
 
 ```bash
 git add <files>
-adr-lint                          # check staged diff against all applicable ADRs
-git commit -m "feat: ..."         # lefthook then runs gofmt/golangci-lint/gitleaks
+git commit -m "feat: ..."         # lefthook runs adr-lint + gofmt/golangci-lint/gitleaks
 ```
 
-### Opt-in pre-commit hook
-
-If you'd rather not remember to run `adr-lint` between `add` and
-`commit`, enable the hook by exporting one env var in your shell rc:
-
-```bash
-# ~/.zshrc or ~/.bashrc
-export ADR_LINT_HOOK=1
-```
-
-After that, `git commit` will run `adr-lint` automatically as part of
-the pre-commit checks. To temporarily skip a commit's ADR check
-without unsetting the var: `LEFTHOOK_EXCLUDE=adr-lint git commit ...`.
-
-The hook is off by default because every run consumes Claude Code
-subscription quota — opting in is a personal choice about how much of
-that quota you want to spend on commit-time feedback.
-
-`adr-lint` operates on the staged diff by default. It picks up only the
-ADRs whose `applies_to` globs match the staged files, then for each one
+`adr-lint` operates on the staged diff. It picks up only the ADRs
+whose `applies_to` globs match the staged files, then for each one
 either short-circuits via `pre_filter` (zero cost) or calls Claude to
 evaluate. Output is file:line for each violation, with a concrete fix.
 
-If a check fails: edit the file, `git add` again, re-run `adr-lint`,
-then `git commit`. Lefthook's gofmt/golangci/gitleaks pre-commit hooks
-are independent and run on every commit — they're free, they always run.
+If a check fails: edit the file, `git add` again, then `git commit`
+again — the hook re-runs against the new staged diff.
+
+### Skipping the ADR check
+
+For a single commit (formatting-only, docs typo, etc.):
+
+```bash
+ADR_LINT_SKIP=1 git commit -m "..."
+# or, equivalently, the lefthook built-in:
+LEFTHOOK_EXCLUDE=adr-lint git commit -m "..."
+```
+
+Both leave the other pre-commit hooks (gofmt, golangci, gitleaks)
+running — they're free and always worth it.
 
 ### Other modes
 

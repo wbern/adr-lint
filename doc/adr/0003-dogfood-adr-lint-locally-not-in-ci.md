@@ -40,11 +40,12 @@ Two enforcement loci to consider:
 
 We will run **adr-lint locally only**, never in CI.
 
-The local hook integration is **opt-in**, not enabled by default. The
-canonical local invocation is a manual `adr-lint` between `git add`
-and `git commit`, documented in `CONTRIBUTING.md`. Contributors who
-want it wired into `pre-commit` can flip the lefthook command on by
-setting `ADR_LINT_HOOK=1` in their shell environment.
+Locally it is **on by default** as a lefthook pre-commit step — this
+repo dogfoods its own linter, and the maintainer's Claude Code
+subscription is the intended quota source. A single commit can be
+exempted with `ADR_LINT_SKIP=1 git commit ...` (or the lefthook
+built-in `LEFTHOOK_EXCLUDE=adr-lint git commit ...`) for changes that
+obviously can't violate an ADR (whitespace, docs typos, comment-only).
 
 **Forbidden:**
 
@@ -61,14 +62,12 @@ jobs:
 **Acceptable:**
 
 ```bash
-# Manual flow (default).
+# Default flow — adr-lint runs as part of git commit via lefthook.
 git add <files>
-adr-lint
 git commit -m "feat: ..."
 
-# Or opt-in to the pre-commit hook for the same flow without the manual step:
-export ADR_LINT_HOOK=1
-# adr-lint now runs automatically as part of `git commit`.
+# One-off skip for trivial changes:
+ADR_LINT_SKIP=1 git commit -m "docs: fix typo"
 ```
 
 If this project ever gains real contributors, supersede this ADR
@@ -84,14 +83,18 @@ question deserves a fresh decision.
 - Maintainer keeps full control of when their subscription is consumed.
 
 **Negative:**
-- A violation introduced in a commit can land on `main` if the
-  maintainer forgets to run the check (manual flow) or hasn't enabled
-  the hook (`ADR_LINT_HOOK=1`).
-- New contributors won't get automatic ADR feedback on their PRs.
+- A violation introduced in a commit can still land on `main` if the
+  committer uses `ADR_LINT_SKIP=1` for a change that wasn't actually
+  trivial.
+- Anyone who clones the repo and runs `lefthook install` must have
+  the `adr-lint` binary and Claude Code CLI available, or every
+  commit fails. Acceptable for now since this repo has no external
+  contributors — revisit if that changes.
 
 **Neutral:**
-- The opt-in env-var pattern means the hook is documented and ready,
-  but disabled by default — flipping it on is a one-line shell rc edit.
+- Every commit pays a Claude Code call (unless the staged diff
+  matches no ADR's `applies_to` globs, in which case adr-lint exits
+  zero-cost). Quota consumption is bounded by commit frequency.
 
 ## References
 

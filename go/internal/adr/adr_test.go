@@ -524,6 +524,26 @@ func TestCreate_UsesDiskTemplateWhenPresent(t *testing.T) {
 	}
 }
 
+func TestValidateFrontmatter_NoFrontmatterIsValid(t *testing.T) {
+	if err := ValidateFrontmatter("# 1. Title\n\n## Decision\nx\n"); err != nil {
+		t.Errorf("absent frontmatter should be nil err; got %v", err)
+	}
+}
+
+func TestValidateFrontmatter_GoodYAMLIsValid(t *testing.T) {
+	content := "---\nstatus: accepted\n---\n# 1. T\n\n## Decision\nx\n"
+	if err := ValidateFrontmatter(content); err != nil {
+		t.Errorf("good yaml should be nil err; got %v", err)
+	}
+}
+
+func TestValidateFrontmatter_MalformedYAMLErrors(t *testing.T) {
+	content := "---\nstatus: \"oops\nbroken: [unterminated\n---\n# 1. T\n\n## Decision\nx\n"
+	if err := ValidateFrontmatter(content); err == nil {
+		t.Error("malformed yaml should return error")
+	}
+}
+
 func TestWriteFileAtomic_WritesContentAndMode(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "file.txt")

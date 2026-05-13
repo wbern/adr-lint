@@ -5,6 +5,8 @@ package validatecmd
 import (
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
 	"github.com/wbern/adr-lint/go/internal/adr"
 )
@@ -21,11 +23,25 @@ func Run(args []string, dir string, out io.Writer) error {
 		return err
 	}
 
+	var issues []string
+
+	for _, a := range adrs {
+		raw, err := os.ReadFile(a.FilePath)
+		if err != nil {
+			return err
+		}
+		if ferr := adr.ValidateFrontmatter(string(raw)); ferr != nil {
+			issues = append(issues, fmt.Sprintf(
+				"ADR %s: malformed frontmatter: %v", adr.NormalizeID(a.ID), ferr))
+		}
+	}
+
 	ids := map[string]bool{}
 	for _, a := range adrs {
 		id := adr.NormalizeID(a.ID)
 		if ids[id] {
-			return fmt.Errorf("duplicate ADR ID %s", id)
+			issues = append(issues, fmt.Sprintf("duplicate ADR ID %s", id))
+			continue
 		}
 		ids[id] = true
 	}
@@ -33,15 +49,21 @@ func Run(args []string, dir string, out io.Writer) error {
 	for _, a := range adrs {
 		id := adr.NormalizeID(a.ID)
 		if a.Status == adr.StatusSuperseded && a.SupersededBy == "" {
-			return fmt.Errorf("ADR %s: status=superseded but no superseded_by set", id)
+			issues = append(issues,
+				fmt.Sprintf("ADR %s: status=superseded but no superseded_by set", id))
 		}
 		if a.SupersededBy != "" {
 			target := adr.NormalizeID(a.SupersededBy)
 			if !ids[target] {
-				return fmt.Errorf("ADR %s: superseded_by references %q but no such ADR exists",
-					id, a.SupersededBy)
+				issues = append(issues, fmt.Sprintf(
+					"ADR %s: superseded_by references %q but no such ADR exists",
+					id, a.SupersededBy))
 			}
 		}
+	}
+
+	if len(issues) > 0 {
+		return fmt.Errorf("validation failed:\n  %s", strings.Join(issues, "\n  "))
 	}
 
 	fmt.Fprintln(out, "OK")

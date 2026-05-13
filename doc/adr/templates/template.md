@@ -1,5 +1,5 @@
 ---
-# Required. One of: proposed | accepted | deprecated | superseded.
+# Required. One of: proposed | accepted | rejected | withdrawn | deprecated | superseded.
 status: proposed
 
 # Optional. Free-form; not parsed by the linter.

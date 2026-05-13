@@ -32,6 +32,43 @@ func TestRun_FlagsDuplicateIDs(t *testing.T) {
 	}
 }
 
+func TestRun_ReportsAllIssuesNotJustFirst(t *testing.T) {
+	dir := t.TempDir()
+	writeADR(t, dir, "0001-orphan.md",
+		"---\nstatus: superseded\n---\n# 1. Orphan\n\n## Decision\nx\n")
+	writeADR(t, dir, "0002-dangling.md",
+		"---\nstatus: superseded\nsuperseded_by: \"0099\"\n---\n# 2. Dangling\n\n## Decision\nx\n")
+
+	var out bytes.Buffer
+	err := Run(nil, dir, &out)
+	if err == nil {
+		t.Fatal("expected error for multiple issues")
+	}
+	msg := err.Error()
+	if !strings.Contains(msg, "0001") {
+		t.Errorf("err should mention 0001 (orphan superseded); got %q", msg)
+	}
+	if !strings.Contains(msg, "0099") {
+		t.Errorf("err should mention 0099 (dangling target); got %q", msg)
+	}
+}
+
+func TestRun_FlagsMalformedFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	// Broken YAML: tab inside mapping value, unterminated string.
+	writeADR(t, dir, "0001-broken.md",
+		"---\nstatus: \"oops\nbroken: [unterminated\n---\n# 1. Broken\n\n## Decision\nx\n")
+
+	var out bytes.Buffer
+	err := Run(nil, dir, &out)
+	if err == nil {
+		t.Fatal("expected error for malformed frontmatter")
+	}
+	if !strings.Contains(err.Error(), "0001") {
+		t.Errorf("err should mention which ADR has malformed YAML; got %q", err.Error())
+	}
+}
+
 func TestRun_AcceptsValidSet(t *testing.T) {
 	dir := t.TempDir()
 	writeADR(t, dir, "0001-old.md",

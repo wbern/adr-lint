@@ -302,6 +302,21 @@ func ExtractSection(content, name string) string {
 	return strings.TrimSpace(strings.Join(collected, "\n"))
 }
 
+// ValidateFrontmatter returns the YAML parse error for content's leading
+// frontmatter block, or nil if the block is absent or parses cleanly.
+// extractFrontmatter is intentionally tolerant of bad YAML (silently falls
+// back to defaults) so management commands keep working on malformed
+// files; ValidateFrontmatter exposes the underlying error for callers
+// that want to surface it.
+func ValidateFrontmatter(content string) error {
+	m := frontmatterRe.FindStringSubmatchIndex(content)
+	if m == nil {
+		return nil
+	}
+	var fm frontmatter
+	return yaml.Unmarshal([]byte(content[m[2]:m[3]]), &fm)
+}
+
 func extractFrontmatter(content string) (*frontmatter, string) {
 	m := frontmatterRe.FindStringSubmatchIndex(content)
 	if m == nil {

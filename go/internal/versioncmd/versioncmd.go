@@ -8,6 +8,12 @@ import (
 	"runtime/debug"
 )
 
+// version is set at build time via -ldflags "-X .../versioncmd.version=...".
+// goreleaser injects the release tag here; for `go install` builds it stays
+// empty and we fall back to runtime/debug.BuildInfo which embeds the module
+// version automatically.
+var version = ""
+
 // Run prints a single "adr-lint <version>" line to out. It takes no args.
 func Run(args []string, _ string, out io.Writer) error {
 	if len(args) > 0 {
@@ -18,6 +24,9 @@ func Run(args []string, _ string, out io.Writer) error {
 }
 
 func buildVersion() string {
+	if version != "" {
+		return version
+	}
 	info, ok := debug.ReadBuildInfo()
 	if !ok || info.Main.Version == "" {
 		return "(unknown)"

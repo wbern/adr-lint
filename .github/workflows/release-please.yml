@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+# Permissions still listed for documentation, but release-please uses the PAT
+# (RELEASE_PLEASE_TOKEN) so its tag push fires the release.yml workflow.
+# Tags pushed by GITHUB_TOKEN do not trigger downstream workflows.
 permissions:
   contents: write
   pull-requests: write
@@ -11,8 +14,31 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      pr: ${{ steps.rp.outputs.pr }}
+      release_created: ${{ steps.rp.outputs.release_created }}
     steps:
       - uses: googleapis/release-please-action@v4
+        id: rp
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+
+  auto-merge:
+    # Trunk-based: auto-merge the Release PR as soon as CI passes.
+    # The PR exists only as a one-step staging area, not a review gate.
+    needs: release-please
+    if: ${{ needs.release-please.outputs.pr }}
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          PR_JSON: ${{ needs.release-please.outputs.pr }}
+        run: |
+          pr_number=$(echo "$PR_JSON" | jq -r '.number')
+          # Direct squash-merge. The Release PR only touches CHANGELOG.md and
+          # the manifest — code already passed CI on main before reaching here.
+          gh pr merge "$pr_number" \
+            --repo "$GITHUB_REPOSITORY" \
+            --squash

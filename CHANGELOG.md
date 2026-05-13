@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/wbern/adr-lint/compare/v0.1.0...v0.1.1) (2026-05-13)
+
+
+### Documentation
+
+* **adr:** add ADRs for release pipeline and local-only dogfooding ([d7a132e](https://github.com/wbern/adr-lint/commit/d7a132e9ba911bd092a2b8bb2223c2ba47924df1))
+
 ## 0.1.0 (2026-05-13)
 
 

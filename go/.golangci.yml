@@ -1,36 +1,39 @@
-# golangci-lint config. Run with: golangci-lint run (from the go/ directory).
+# golangci-lint config (v2 schema). Run with: golangci-lint run (from go/).
 #
 # Philosophy: enable the standard quality linters, plus a few opinionated ones
 # that catch bugs gofmt/vet miss. Avoid stylistic linters that just bikeshed.
+
+version: "2"
 
 run:
   timeout: 3m
   tests: true
 
 linters:
-  disable-all: true
+  default: none
   enable:
     - errcheck       # unchecked error returns
-    - gosimple       # simplifications
     - govet          # the standard go vet
     - ineffassign    # ineffectual assignments
-    - staticcheck    # broad static analysis
+    - staticcheck    # broad static analysis (subsumes gosimple in v2)
     - unused         # dead code
-    - gofmt          # formatting
-    - goimports      # import grouping
     - misspell       # typos in comments/strings
     - unconvert      # unnecessary type conversions
     - bodyclose      # missed resp.Body.Close()
     - errorlint      # errors.Is / errors.As correctness
+  exclusions:
+    rules:
+      # Test files often need long functions and intentionally simple errors.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - errorlint
 
-linters-settings:
-  goimports:
-    local-prefixes: github.com/wbern/adr-lint
-
-issues:
-  exclude-rules:
-    # Test files often need long functions and intentionally simple errors.
-    - path: _test\.go
-      linters:
-        - errcheck
-        - errorlint
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/wbern/adr-lint

@@ -47,7 +47,7 @@ func SetStatus(args []string, dir string, out io.Writer, spec Spec) error {
 		if err := adr.WriteFileAtomic(a.FilePath, []byte(updated), 0644); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "%s %s\n", spec.Verb, a.FilePath)
+		fmt.Fprintf(out, "%s %s\n", spec.Verb, adr.DisplayPath(a.FilePath))
 		return nil
 	}
 	return fmt.Errorf("ADR %s not found", args[0])

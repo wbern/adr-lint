@@ -21,6 +21,6 @@ func Run(args []string, dir string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(out, "Created %s\n", path)
+	fmt.Fprintf(out, "Created %s\n", adr.DisplayPath(path))
 	return nil
 }

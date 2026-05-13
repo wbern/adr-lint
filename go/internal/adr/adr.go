@@ -528,3 +528,33 @@ func nextADRNumber(dir string) int {
 	}
 	return highest + 1
 }
+
+// DisplayPath returns p relative to the current working directory when
+// that yields a shorter, non-escaping path. Used by user-facing commands
+// so success messages don't leak absolute workspace paths. Cwd and the
+// directory containing p are passed through filepath.EvalSymlinks so a
+// /tmp-style symlink prefix mismatch doesn't force a fallback to the
+// absolute form. Resolving the parent (not p itself) keeps this working
+// for files that don't exist on disk yet.
+func DisplayPath(p string) string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return p
+	}
+	if resolved, err := filepath.EvalSymlinks(cwd); err == nil {
+		cwd = resolved
+	}
+	target := p
+	if resolvedDir, err := filepath.EvalSymlinks(filepath.Dir(p)); err == nil {
+		target = filepath.Join(resolvedDir, filepath.Base(p))
+	}
+	rel, err := filepath.Rel(cwd, target)
+	if err != nil {
+		return p
+	}
+	sep := string(filepath.Separator)
+	if rel == ".." || strings.HasPrefix(rel, ".."+sep) || len(rel) >= len(p) {
+		return p
+	}
+	return rel
+}

@@ -732,3 +732,75 @@ func idsOf(adrs []ADR) []string {
 	}
 	return out
 }
+
+// ---------- DisplayPath ----------
+//
+// These tests mutate os.Chdir and are therefore NOT parallel-safe — do not
+// add t.Parallel() here, and be cautious adding it to other tests in this
+// package while these exist.
+
+// chdirTo switches into dir for the duration of the test, restoring the
+// previous cwd via t.Cleanup. Fails the test on any error so silent cwd
+// drift can't poison sibling tests.
+func chdirTo(t *testing.T, dir string) {
+	t.Helper()
+	prev, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getwd: %v", err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chdir(prev); err != nil {
+			t.Errorf("restore cwd: %v", err)
+		}
+	})
+	if err := os.Chdir(dir); err != nil {
+		t.Fatalf("chdir %s: %v", dir, err)
+	}
+}
+
+func TestDisplayPath_RelativeWhenInsideCwd(t *testing.T) {
+	tmp := t.TempDir()
+	chdirTo(t, tmp)
+
+	dir := filepath.Join(tmp, "doc", "adr")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	abs := filepath.Join(dir, "0001-foo.md")
+	got := DisplayPath(abs)
+	want := filepath.Join("doc", "adr", "0001-foo.md")
+	if got != want {
+		t.Errorf("DisplayPath(%q) = %q, want %q", abs, got, want)
+	}
+}
+
+func TestDisplayPath_AbsoluteWhenRelativeEscapes(t *testing.T) {
+	tmp := t.TempDir()
+	inner := filepath.Join(tmp, "inner")
+	if err := os.MkdirAll(inner, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	chdirTo(t, inner)
+
+	// abs lives in a sibling dir — relative path would start with "..".
+	abs := filepath.Join(tmp, "outside", "file.md")
+	if got := DisplayPath(abs); got != abs {
+		t.Errorf("DisplayPath(%q) = %q, want absolute %q", abs, got, abs)
+	}
+}
+
+func TestDisplayPath_AbsoluteWhenRelativeLonger(t *testing.T) {
+	tmp := t.TempDir()
+	// Cwd deep under tmp; the abs file is one level under the filesystem root.
+	deep := filepath.Join(tmp, "a", "b", "c", "d")
+	if err := os.MkdirAll(deep, 0755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	chdirTo(t, deep)
+
+	abs := filepath.Join(string(filepath.Separator), "x.md")
+	got := DisplayPath(abs)
+	if got != abs {
+		t.Errorf("DisplayPath(%q) = %q, want absolute %q (relative would be longer)", abs, got, abs)
+	}
+}

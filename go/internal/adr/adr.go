@@ -45,14 +45,14 @@ const DirName = "doc/adr"
 // one-element slice so the "any pattern matches" semantics hold.
 // EnforcedBy is *string to distinguish "missing" from "empty".
 type ADR struct {
-	ID          string
-	Title       string
-	Status      Status
-	AppliesTo   []string
-	Complexity  Complexity
-	Decision    string
-	FilePath    string
-	Content     string
+	ID           string
+	Title        string
+	Status       Status
+	AppliesTo    []string
+	Complexity   Complexity
+	Decision     string
+	FilePath     string
+	Content      string
 	PreFilter    []string
 	EnforcedBy   *string
 	DiffContext  bool
@@ -62,11 +62,11 @@ type ADR struct {
 // frontmatter is the raw shape of the YAML block; field types accept the
 // union shapes the original parser handled.
 type frontmatter struct {
-	Status      string      `yaml:"status"`
-	Date        string      `yaml:"date"`
-	AppliesTo   []string    `yaml:"applies_to"`
-	Complexity  string      `yaml:"complexity"`
-	PreFilter   interface{} `yaml:"pre_filter"`
+	Status       string      `yaml:"status"`
+	Date         string      `yaml:"date"`
+	AppliesTo    []string    `yaml:"applies_to"`
+	Complexity   string      `yaml:"complexity"`
+	PreFilter    interface{} `yaml:"pre_filter"`
 	EnforcedBy   string      `yaml:"enforced_by"`
 	DiffContext  *bool       `yaml:"diff_context"`
 	SupersededBy string      `yaml:"superseded_by"`

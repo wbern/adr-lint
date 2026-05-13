@@ -14,9 +14,6 @@ func TestRun_PrintsVersionLine(t *testing.T) {
 	if !strings.HasPrefix(out.String(), "adr-lint ") {
 		t.Errorf("output should start with %q, got: %q", "adr-lint ", out.String())
 	}
-	if !strings.HasSuffix(strings.TrimRight(out.String(), "\n"), strings.TrimSpace(strings.TrimPrefix(out.String(), "adr-lint "))) {
-		// trivially true — just shape the assertion: there's a non-empty version after the prefix
-	}
 	if strings.TrimSpace(strings.TrimPrefix(out.String(), "adr-lint ")) == "" {
 		t.Errorf("version is empty: %q", out.String())
 	}

@@ -687,8 +687,8 @@ func TestRun_PerFileSplitsAndAggregatesChunks(t *testing.T) {
 		"index e69de29..d670460 100644\n--- a/pkg/b.go\n+++ b/pkg/b.go\n" +
 		"@@ -0,0 +1,1 @@\n+const b = 2;\n"
 	git := fakeGit(gitRoot, map[string]string{
-		"diff --cached --name-only":                "pkg/a.go\npkg/b.go\n",
-		"diff --cached -U0 -- pkg/a.go pkg/b.go":  diff,
+		"diff --cached --name-only":              "pkg/a.go\npkg/b.go\n",
+		"diff --cached -U0 -- pkg/a.go pkg/b.go": diff,
 	})
 
 	var mu sync.Mutex
@@ -770,8 +770,8 @@ func TestRun_BranchModeInvokesLintWithBranchDiff(t *testing.T) {
 		"index e69de29..d670460 100644\n--- a/pkg/foo.go\n+++ b/pkg/foo.go\n" +
 		"@@ -0,0 +1,1 @@\n+const x = 5;\n"
 	git := fakeGit(gitRoot, map[string]string{
-		"merge-base HEAD main":              "abc123\n",
-		"diff --name-only abc123..HEAD":     "pkg/foo.go\n",
+		"merge-base HEAD main":                "abc123\n",
+		"diff --name-only abc123..HEAD":       "pkg/foo.go\n",
 		"diff -U0 abc123..HEAD -- pkg/foo.go": diff,
 	})
 

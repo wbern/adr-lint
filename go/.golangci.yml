@@ -21,6 +21,17 @@ linters:
     - unconvert      # unnecessary type conversions
     - bodyclose      # missed resp.Body.Close()
     - errorlint      # errors.Is / errors.As correctness
+  settings:
+    errcheck:
+      # Writes to stdout/stderr and Close on file handles being abandoned in
+      # error paths are conventionally ignored — the program is already going
+      # to surface (or has surfaced) a higher-level error.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Sscanf
+        - (*os.File).Close
   exclusions:
     rules:
       # Test files often need long functions and intentionally simple errors.

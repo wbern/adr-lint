@@ -50,13 +50,23 @@ go install github.com/wbern/adr-lint/go/cmd/adr-lint@latest
 
 # 3. Write your first ADR
 adr-lint create "Use the logger package instead of fmt.Println"
-# ...edit doc/adr/0001-*.md: tighten applies_to + pre_filter, write the decision
+# Edit doc/adr/0001-*.md: tighten applies_to globs, add pre_filter
+# substrings, write the decision body. See "ADR file format" below
+# for what each frontmatter field does.
 adr-lint accept 1
 
-# 4. Wire it into git
-ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+# 4. Try it against a staged change before wiring it as a hook
+git add some-file.go
+adr-lint                              # one-shot check, prints violations
 
-# Every commit from here on checks staged files against accepted ADRs.
+# 5. Wire it into git so it runs on every commit
+cat > .git/hooks/pre-commit <<'EOF'
+#!/usr/bin/env bash
+set -e
+command -v adr-lint >/dev/null || exit 0    # no-op for collaborators without it
+adr-lint
+EOF
+chmod +x .git/hooks/pre-commit
 ```
 
 ## ADR file format
@@ -117,13 +127,22 @@ adr-lint --per-file            # one chunk per file (slower, more precise)
 
 ### Pre-commit hook (adopting adr-lint in your project)
 
-The sample at [`scripts/pre-commit`](scripts/pre-commit) runs `adr-lint`
-on staged files and exits cleanly if the binary isn't on PATH (so
-collaborators without it aren't blocked).
+Drop this into `.git/hooks/pre-commit` in your repo — it runs
+`adr-lint` on staged files and exits cleanly if the binary isn't on
+PATH, so collaborators without it aren't blocked:
 
 ```bash
-ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+cat > .git/hooks/pre-commit <<'EOF'
+#!/usr/bin/env bash
+set -e
+command -v adr-lint >/dev/null || exit 0
+adr-lint
+EOF
+chmod +x .git/hooks/pre-commit
 ```
+
+The same script lives at [`scripts/pre-commit`](scripts/pre-commit) in
+this repo for reference.
 
 This is the zero-dependency option for using adr-lint in **your** repo.
 For working on adr-lint itself, see [CONTRIBUTING.md](CONTRIBUTING.md) —

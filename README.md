@@ -114,8 +114,10 @@ positives (the linter flags benign code).
 
    `obscene` combines `scc` cyclomatic complexity with git churn to
    rank files that are both complex and actively modified. The top
-   of that list is where new ADRs land highest-leverage. (Needs `scc`
-   on PATH: `brew install scc`.)
+   of that list is where new ADRs land highest-leverage. Needs `scc`
+   on PATH (`brew install scc` on macOS; `choco install scc` or
+   `scoop install scc` on Windows; see [scc install docs](https://github.com/boyter/scc#installation)
+   for Linux).
 
 ### Shapes that play well with adr-lint
 

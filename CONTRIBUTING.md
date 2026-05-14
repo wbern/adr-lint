@@ -104,7 +104,10 @@ again — the hook re-runs against the new staged diff.
 
 ### Skipping the ADR check
 
-For a single commit (formatting-only, docs typo, etc.):
+Each `adr-lint` run makes a Claude call per applicable ADR (minus
+pre-filter hits). For changes that obviously can't violate an
+architectural constraint — pure formatting/whitespace, README/docs
+typos, comment-only edits — skip the ADR check for a single commit:
 
 ```bash
 ADR_LINT_SKIP=1 git commit -m "..."
@@ -113,13 +116,15 @@ LEFTHOOK_EXCLUDE=adr-lint git commit -m "..."
 ```
 
 Both leave the other pre-commit hooks (gofmt, golangci, gitleaks)
-running — they're free and always worth it.
+running — they're free and always worth it. Use judgement: the ADRs
+themselves are short, and if you've read them recently and the change
+clearly doesn't touch the surface they govern, just commit.
 
 ### Other modes
 
 ```bash
-adr-lint -v                       # verbose: show every applicable ADR
-                                  # (passed + failed), with pre-filter reasons
+adr-lint --verbose                # show every applicable ADR (passed + failed),
+                                  # with pre-filter reasons
 adr-lint --branch                 # lint everything on the current branch that
                                   # has diverged from main (merge-base..HEAD)
                                   # — useful before pushing a long-running branch
@@ -127,16 +132,3 @@ adr-lint --branch feat/other      # same, but for an explicit ref instead of HEA
 adr-lint --files path/to/file.go  # lint a specific file even if not staged
 ```
 
-### When to skip
-
-`adr-lint` makes a real Claude call per applicable ADR (minus pre-filter
-hits). Skip it for changes that obviously can't violate an architectural
-constraint:
-
-- Pure formatting/whitespace
-- README/docs typo fixes
-- Comment-only edits
-
-Use judgement. The ADRs themselves are short — if you've read them
-recently and the change clearly doesn't touch the surface they govern,
-just commit.

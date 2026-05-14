@@ -56,6 +56,8 @@ adr-lint create "Use the logger package instead of fmt.Println"
 adr-lint accept 1
 
 # 4. Try it against a staged change before wiring it as a hook
+#    (stage a file whose path matches your ADR's applies_to glob,
+#    otherwise the ADR won't load and you'll see nothing)
 git add some-file.go
 adr-lint                              # one-shot check, prints violations
 
@@ -119,7 +121,7 @@ ADRs the linter can mechanically enforce share a shape: a specific,
 diff-visible rule in active voice. Good patterns:
 
 - **Forbidden imports / packages.** "Don't import `openai` — use the
-  Claude Code CLI." (See [ADR-0001](doc/adr/0001-claude-is-the-only-llm-provider.md).)
+  Claude Code CLI."
 - **Required wrapper functions.** "Use `logger.Info`, not `fmt.Println`."
 - **File-location rules.** "HTTP handlers live in `internal/api`."
 - **API-shape rules.** "Controllers must not return database models —
@@ -128,7 +130,10 @@ diff-visible rule in active voice. Good patterns:
   be wrapped with `errors.Wrap`."
 
 All of these answer the diff-visibility test: a reviewer staring at
-the unified diff alone could spot a violation.
+the unified diff alone could spot a violation. For a real worked
+example in this repo, see
+[ADR-0001](doc/adr/0001-claude-is-the-only-llm-provider.md) — the
+forbidden-imports pattern applied to LLM providers.
 
 ### Shapes that don't
 
@@ -170,12 +175,12 @@ adr-lint is opinionated toward *enforceable* rules. Classic ADR
 practice is broader — decision archaeology, alternatives auditing,
 team communication. For that side of the discipline:
 
+- [Michael Nygard's original 2011 post](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+  — the foundational write-up; start here if ADRs are new to you.
 - [MADR](https://adr.github.io/madr/) — the most widely-used ADR
   template; emphasizes considered alternatives.
 - [joelparkerhenderson/architecture-decision-record](https://github.com/joelparkerhenderson/architecture-decision-record)
   — curated examples and a dozen template variants.
-- [Michael Nygard's original 2011 post](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
-  — the source material.
 
 ## ADR file format
 

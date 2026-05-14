@@ -49,6 +49,7 @@ pre-commit:
       # git commit ... See ADR-0003 for the rationale.
       run: |
         if [ "$ADR_LINT_SKIP" = "1" ]; then
+          echo "adr-lint: skipped (ADR_LINT_SKIP=1)" >&2
           exit 0
         fi
         adr-lint

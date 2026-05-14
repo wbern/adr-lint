@@ -92,9 +92,11 @@ question deserves a fresh decision.
   contributors — revisit if that changes.
 
 **Neutral:**
-- Every commit pays a Claude Code call (unless the staged diff
-  matches no ADR's `applies_to` globs, in which case adr-lint exits
-  zero-cost). Quota consumption is bounded by commit frequency.
+- Most commits cost nothing. Two free-pass mechanisms compose:
+  ADRs whose `applies_to` globs don't match the staged diff are
+  never loaded; ADRs that do match but whose `pre_filter` substrings
+  don't appear in the diff auto-pass without an LLM call. A Claude
+  Code call only fires for an ADR that matches *and* pre-filters in.
 
 ## References
 

@@ -69,6 +69,114 @@ EOF
 chmod +x .git/hooks/pre-commit
 ```
 
+## Picking your first ADRs
+
+The single test that decides whether a decision belongs in an
+adr-lint-enforced ADR (vs. a design doc, RFC, or runtime check) is:
+
+> Could a reviewer who only sees this PR's diff, with no broader
+> context, catch a violation of this rule?
+
+If yes, it's a fit. If no, the rule belongs somewhere else — writing
+it as an ADR will produce noisy false negatives or false positives.
+
+### Three ways to surface candidates
+
+1. **Cluster your `fix:` commits.** Each fix is a lesson the project
+   already paid for; recurring patterns are exactly the rules worth
+   crystallizing.
+
+   ```bash
+   git log --grep='^fix' --oneline | head -50
+   ```
+
+   Three separate fixes for panics on unchecked map lookups? That's
+   an ADR ("require ok-form for map access in `pkg/cache`").
+
+2. **The rules you keep typing in code review.** Any nit you've left
+   on three different PRs is a candidate. If someone needed to be
+   told, the project needs to write it down.
+
+3. **Hotspot analysis.** Files that are both high-complexity *and*
+   high-churn (per Adam Tornhill's *Your Code as a Crime Scene*) are
+   where architectural decisions matter most — that's where you've
+   been paying the cost of *not* having a rule. Surface them with
+   [obscene](https://github.com/wbern/obscene):
+
+   ```bash
+   pnpm dlx @wbern/obscene --format table     # no install needed
+   # or: pnpm add -g @wbern/obscene
+   ```
+
+   `obscene` combines `scc` cyclomatic complexity with git churn to
+   rank files that are both complex and actively modified. The top
+   of that list is where new ADRs land highest-leverage. (Needs `scc`
+   on PATH: `brew install scc`.)
+
+### Shapes that play well with adr-lint
+
+ADRs the linter can mechanically enforce share a shape: a specific,
+diff-visible rule in active voice. Good patterns:
+
+- **Forbidden imports / packages.** "Don't import `openai` — use the
+  Claude Code CLI." (See [ADR-0001](doc/adr/0001-claude-is-the-only-llm-provider.md).)
+- **Required wrapper functions.** "Use `logger.Info`, not `fmt.Println`."
+- **File-location rules.** "HTTP handlers live in `internal/api`."
+- **API-shape rules.** "Controllers must not return database models —
+  wrap in DTOs first."
+- **Required error-handling idioms.** "Errors from `db.*` calls must
+  be wrapped with `errors.Wrap`."
+
+All of these answer the diff-visibility test: a reviewer staring at
+the unified diff alone could spot a violation.
+
+### Shapes that don't
+
+Skip ADRs for rules that require whole-program or runtime context:
+
+- **"Services should be loosely coupled"** — needs system-wide view.
+- **"Prefer eventual consistency where possible"** — depends on
+  end-to-end data flow.
+- **"Minimize blast radius"** — operational, not diff-visible.
+
+These deserve to be documented (in an RFC or design doc), but
+adr-lint can't enforce them.
+
+### Keep runs cheap
+
+Every ADR whose `applies_to` glob matches the staged diff potentially
+triggers a Claude Code call. Two levers keep that cost down:
+
+1. **Tight `applies_to` globs.** Don't write `["**/*"]` if the rule
+   only governs `go/**/*.go`. ADRs whose globs miss the diff are
+   skipped at zero cost.
+2. **Meaningful `pre_filter` substrings.** Two or three keywords from
+   the rule's vocabulary. If none appear in the diff, the LLM call is
+   skipped and the ADR auto-passes with a clear explanation.
+
+This repo's own three ADRs are tight by design and good references:
+
+| ADR | `applies_to` | `pre_filter` |
+|---|---|---|
+| [0001](doc/adr/0001-claude-is-the-only-llm-provider.md) | `go/**/*.go` | `gemini`, `vertex`, `openai` |
+| [0002](doc/adr/0002-trunk-based-releases-via-release-please-auto-merge.md) | workflow + goreleaser files | `release-please`, `goreleaser` |
+| [0003](doc/adr/0003-dogfood-adr-lint-locally-not-in-ci.md) | workflows + `lefthook.yml` | `adr-lint`, `adr_lint` |
+
+A commit that doesn't touch any of those surfaces costs nothing.
+
+### Going deeper on ADR craft
+
+adr-lint is opinionated toward *enforceable* rules. Classic ADR
+practice is broader — decision archaeology, alternatives auditing,
+team communication. For that side of the discipline:
+
+- [MADR](https://adr.github.io/madr/) — the most widely-used ADR
+  template; emphasizes considered alternatives.
+- [joelparkerhenderson/architecture-decision-record](https://github.com/joelparkerhenderson/architecture-decision-record)
+  — curated examples and a dozen template variants.
+- [Michael Nygard's original 2011 post](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+  — the source material.
+
 ## ADR file format
 
 ADRs live in `doc/adr/NNNN-slug.md` with YAML frontmatter that controls

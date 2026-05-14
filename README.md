@@ -80,7 +80,9 @@ adr-lint-enforced ADR (vs. a design doc, RFC, or runtime check) is:
 > context, catch a violation of this rule?
 
 If yes, it's a fit. If no, the rule belongs somewhere else — writing
-it as an ADR will produce noisy false negatives or false positives.
+it as an ADR will produce silent false negatives (real violations
+slip through, since the diff alone can't reveal them) or noisy false
+positives (the linter flags benign code).
 
 ### Three ways to surface candidates
 

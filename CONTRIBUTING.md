@@ -120,8 +120,10 @@ running — they're free and always worth it.
 ```bash
 adr-lint -v                       # verbose: show every applicable ADR
                                   # (passed + failed), with pre-filter reasons
-adr-lint --branch origin/main     # lint everything that has diverged from main
+adr-lint --branch                 # lint everything on the current branch that
+                                  # has diverged from main (merge-base..HEAD)
                                   # — useful before pushing a long-running branch
+adr-lint --branch feat/other      # same, but for an explicit ref instead of HEAD
 adr-lint --files path/to/file.go  # lint a specific file even if not staged
 ```
 

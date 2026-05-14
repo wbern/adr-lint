@@ -19,7 +19,7 @@ Claude Code subscription. The subscription is **flat-rate** — there's
 no per-call dollar charge — but every run does consume that account's
 rate-limit quota.
 
-Two enforcement loci to consider:
+Three enforcement loci to consider:
 
 - **In CI** — every PR triggers `adr-lint`. To work, CI needs an auth
   token for *someone's* Claude Code subscription stashed as a repo

@@ -1,0 +1,13 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="ADR Lint">
+  <rect x="56" y="40" width="128" height="176" rx="6"
+        fill="none" stroke="#0f1419" stroke-width="12" stroke-linejoin="round"/>
+  <line x1="76" y1="84"  x2="164" y2="84"
+        stroke="#0f1419" stroke-width="10" stroke-linecap="round"/>
+  <line x1="76" y1="120" x2="164" y2="120"
+        stroke="#0f1419" stroke-width="10" stroke-linecap="round"/>
+  <line x1="76" y1="156" x2="132" y2="156"
+        stroke="#0f1419" stroke-width="10" stroke-linecap="round"/>
+  <polyline points="140,168 176,204 232,128"
+            fill="none" stroke="#f0b429" stroke-width="18"
+            stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

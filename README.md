@@ -1,3 +1,5 @@
+<p align="center"><img src="./logo.svg" width="160" alt="ADR Lint logo"></p>
+
 # ADR Lint
 
 Automatically validates code changes against Architecture Decision Records (ADRs) using Claude as the analysis backend.

@@ -1,10 +1,15 @@
-<p align="center"><img src="./logo.svg" width="160" alt="ADR Lint logo"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./logo-dark.svg">
+    <img src="./logo.svg" width="160" alt="ADR Lint logo">
+  </picture>
+</p>
 
-# ADR Lint
+<h1 align="center">ADR Lint</h1>
 
-Automatically validates code changes against Architecture Decision Records (ADRs) using Claude as the analysis backend.
+<p align="center">Automatically validates code changes against Architecture Decision Records (ADRs) using Claude as the analysis backend.</p>
 
-![demo](docs/demo-all.gif)
+<p align="center"><img src="docs/demo-all.gif" alt="demo"></p>
 
 (Fresh repo to a caught violation in one take: `adr-lint create` scaffolds the
 ADR, frontmatter narrows what it applies to, then staging a `fmt.Println` that

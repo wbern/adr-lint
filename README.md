@@ -9,6 +9,14 @@
 
 <p align="center">Automatically validates code changes against Architecture Decision Records (ADRs) using Claude as the analysis backend.</p>
 
+<p align="center">
+  <a href="https://github.com/wbern/adr-lint/actions/workflows/ci.yml"><img src="https://github.com/wbern/adr-lint/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <br>
+  <a href="https://claude.ai/code"><img src="https://img.shields.io/badge/Made%20with-Claude%20Code-blueviolet" alt="Made with Claude Code"></a>
+  <a href="https://github.com/wbern/adr-lint/graphs/contributors"><img src="https://img.shields.io/github/contributors/wbern/adr-lint" alt="Contributors"></a>
+  <a href="https://github.com/wbern/adr-lint/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome"></a>
+</p>
+
 <p align="center"><img src="docs/demo-all.gif" alt="demo"></p>
 
 (Fresh repo to a caught violation in one take: `adr-lint create` scaffolds the

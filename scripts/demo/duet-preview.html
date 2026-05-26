@@ -1,0 +1,277 @@
+<!doctype html>
+<!--
+  Static preview of the duet choreography for iterating on layout/timing
+  without re-recording. The architect/Bob commands and zoo.go contents
+  mirror duet.sh, but the lint output block is a hand-rolled stand-in.
+  Editing it will NOT change the real gif — that comes from Claude's
+  live response during `record_demo.sh duet`.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>adr-lint duet — animated preview</title>
+<style>
+  :root {
+    --bg: #1a1a1a;
+    --left-bg: #272822;
+    --right-bg: #1a1f3a;
+    --fg: #f8f8f2;
+    --dim: #75715e;
+    --green: #a6e22e;
+    --magenta: #f92672;
+    --blue: #66d9ef;
+    --yellow: #e6db74;
+    --red: #ff5555;
+    --border: #3a3a3a;
+  }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.45 ui-sans-serif, system-ui, sans-serif;
+  }
+  header {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px;
+  }
+  header h1 {
+    margin: 0; font-size: 14px; font-weight: 600; flex: 1;
+  }
+  header p { margin: 0; color: var(--dim); font-size: 12px; flex: 2; }
+  header button {
+    background: #333; color: var(--fg);
+    border: 1px solid #555; border-radius: 4px;
+    padding: 6px 12px; font: inherit; cursor: pointer;
+  }
+  header button:hover { background: #444; }
+  header .speed { color: var(--dim); font-size: 12px; }
+  header input[type=range] { vertical-align: middle; }
+
+  .frame {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: min(1700px, 100%);
+    margin: 18px auto;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  }
+  .pane {
+    padding: 14px 16px;
+    height: 720px;
+    overflow-y: auto;
+    font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    font-size: 18px;
+    line-height: 1.35;
+    white-space: pre-wrap;
+    word-break: break-word;
+    position: relative;
+  }
+  .pane::-webkit-scrollbar { width: 8px; }
+  .pane::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+  .left  { background: var(--left-bg); }
+  .right { background: var(--right-bg); border-left: 1px solid #555; }
+
+  .ps-left  .user { color: var(--green); }
+  .ps-right .user { color: var(--magenta); }
+  .cwd     { color: var(--blue); }
+  .comment { color: var(--dim); }
+  .ok      { color: var(--green); }
+  .fail    { color: var(--red); }
+  .warn    { color: var(--yellow); }
+  .dim     { color: var(--dim); }
+  .yellow  { color: var(--yellow); }
+  .blue    { color: var(--blue); }
+
+  .cursor {
+    display: inline-block;
+    width: 0.55em; height: 1em;
+    background: var(--fg);
+    vertical-align: -0.15em;
+    animation: blink 1s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  footer {
+    padding: 10px 20px;
+    border-top: 1px solid var(--border);
+    color: var(--dim);
+    font-size: 12px;
+  }
+  code { color: var(--yellow); }
+</style>
+</head>
+<body>
+<header>
+  <h1>adr-lint duet — animated preview</h1>
+  <p>Same choreography <code>duet.sh</code> drives via tmux. Click Replay to watch again. Speed slider scales typing + beats.</p>
+  <label class="speed">speed <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1"> <span id="speedLabel">1.0×</span></label>
+  <button id="replay">Replay</button>
+</header>
+
+<div class="frame">
+  <div class="pane left  ps-left"  id="leftPane"></div>
+  <div class="pane right ps-right" id="rightPane"></div>
+</div>
+
+<footer>
+  Geometry: 170×30 cells, font-size 18px (matches <code>AGG_FONT_SIZE=18</code>).
+  Right-pane tint <code>bg=#1a1f3a</code>. Prompts: <code>architect@laptop</code> (green), <code>bob@desktop</code> (magenta).
+  Lint output here is a stand-in — the real GIF shows whatever Claude returns.
+</footer>
+
+<script>
+(() => {
+  const leftEl  = document.getElementById('leftPane');
+  const rightEl = document.getElementById('rightPane');
+  const speedEl = document.getElementById('speed');
+  const speedLabel = document.getElementById('speedLabel');
+  const replayBtn = document.getElementById('replay');
+
+  let speedMul = 1;
+  speedEl.addEventListener('input', () => {
+    speedMul = parseFloat(speedEl.value);
+    speedLabel.textContent = speedMul.toFixed(2) + '×';
+  });
+
+  const prompt = (side) =>
+    `<span class="user">${side === 'L' ? 'architect@laptop' : 'bob@desktop'}</span>:<span class="cwd">my-project</span>$ `;
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms / speedMul));
+
+  // Append HTML to a pane; if a cursor exists, place new content before it.
+  // Auto-scroll so the latest output (and cursor) stay visible — matches
+  // how a real terminal pushes old lines up off the top.
+  const append = (el, html) => {
+    const cursor = el.querySelector('.cursor');
+    if (cursor) cursor.insertAdjacentHTML('beforebegin', html);
+    else el.insertAdjacentHTML('beforeend', html);
+    el.scrollTop = el.scrollHeight;
+  };
+
+  const ensureCursor = (el) => {
+    if (!el.querySelector('.cursor'))
+      el.insertAdjacentHTML('beforeend', '<span class="cursor"></span>');
+  };
+  const removeCursor = (el) => {
+    const c = el.querySelector('.cursor');
+    if (c) c.remove();
+  };
+
+  // Type text into a pane char-by-char (plain text, escaped).
+  const typeText = async (el, text, cps = 0.022) => {
+    ensureCursor(el);
+    for (const ch of text) {
+      const safe = ch === '<' ? '&lt;'
+                  : ch === '>' ? '&gt;'
+                  : ch === '&' ? '&amp;'
+                  : ch;
+      append(el, safe);
+      await sleep(cps * 1000);
+    }
+  };
+
+  const newline = (el) => append(el, '\n');
+
+  const showPrompt = (el, side) => {
+    removeCursor(el);
+    append(el, prompt(side));
+    ensureCursor(el);
+  };
+
+  const runCmd = async (el, side, cmd, beat = 900) => {
+    showPrompt(el, side);
+    await typeText(el, cmd);
+    newline(el);
+    await sleep(beat);
+  };
+
+  const comment = async (el, side, text) => {
+    showPrompt(el, side);
+    removeCursor(el);
+    append(el, `<span class="comment">${'# ' + text}</span>`);
+    newline(el);
+    ensureCursor(el);
+    await sleep(800);
+  };
+
+  const dump = async (el, html, beat = 600) => {
+    removeCursor(el);
+    append(el, html);
+    if (!html.endsWith('\n')) newline(el);
+    ensureCursor(el);
+    await sleep(beat);
+  };
+
+  // ------- the full transcript, in order -------
+  const run = async () => {
+    leftEl.innerHTML = '';
+    rightEl.innerHTML = '';
+    ensureCursor(leftEl);
+    ensureCursor(rightEl);
+    await sleep(800);
+
+    // --- Beat 1: architect ships the ADR ---
+    await comment(leftEl, 'L', "third PR with meow_meow_count this sprint. enough.");
+    await sleep(400);
+
+    await runCmd(leftEl, 'L', "adr-lint create 'Ban animal sounds in identifiers'", 300);
+    await dump(leftEl,
+      `<span class="ok">✓</span> Created doc/adr/0001-ban-animal-sounds-in-identifiers.md\n`, 600);
+
+    await runCmd(leftEl, 'L', "adr-lint accept 1", 300);
+    await dump(leftEl, `<span class="ok">✓</span> ADR 0001 → accepted\n`, 600);
+    showPrompt(leftEl, 'L');
+
+    await sleep(1000);
+
+    // --- Beat 2: Bob, oblivious ---
+    await comment(rightEl, 'R', "shipping the zoo handlers");
+    await sleep(300);
+
+    await runCmd(rightEl, 'R', "cat zoo.go", 300);
+    await dump(rightEl,
+`package main
+
+import "fmt"
+
+func meow_meow_count(cats int) int { return cats * 9 }
+
+func moo_moo_handler() { fmt.Println("moo") }
+`, 700);
+
+    await runCmd(rightEl, 'R', "git add zoo.go && adr-lint", 300);
+    await dump(rightEl,
+      `<span class="dim">→ ADR 0001: pre_filter matched, querying Claude…</span>\n`, 1100);
+    await dump(rightEl,
+`<span class="fail">❌ ADR 0001 — Ban animal sounds in identifiers</span>
+   <span class="warn">zoo.go:5</span> func meow_meow_count(cats int) int
+   <span class="warn">zoo.go:7</span> func moo_moo_handler()
+
+   <span class="dim">fix:</span> rename to intent-revealing identifiers.
+
+<span class="fail">FAIL</span> 1 ADR violated.
+`, 700);
+
+    await comment(rightEl, 'R', "...oh.");
+    showPrompt(rightEl, 'R');
+    await sleep(2000);
+  };
+
+  let running = false;
+  const start = async () => {
+    if (running) return;
+    running = true;
+    replayBtn.disabled = true;
+    try { await run(); }
+    finally { running = false; replayBtn.disabled = false; }
+  };
+
+  replayBtn.addEventListener('click', start);
+  start();
+})();
+</script>
+</body>
+</html>

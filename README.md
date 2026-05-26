@@ -17,13 +17,14 @@
   <a href="https://github.com/wbern/adr-lint/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen" alt="PRs Welcome"></a>
 </p>
 
-<p align="center"><img src="docs/demo-all.gif" alt="demo"></p>
+<p align="center"><img src="docs/demo-duet.gif" alt="demo"></p>
 
-(Fresh repo to a caught violation in one take: `adr-lint create` scaffolds the
-ADR, frontmatter narrows what it applies to, then staging a `fmt.Println` that
-violates the decision lights up `❌` with a concrete fix. Reproduce with
-[`./scripts/demo/record_demo.sh`](scripts/demo/record_demo.sh) — needs
-`asciinema`, `agg`, and the `claude` CLI on PATH.)
+(Two terminals, one ADR. The architect (left) gets fed up with `meow_meow_count`
+in code review and ships an ADR banning animal sounds in identifiers. Bob (right),
+oblivious, writes `zoo.go` full of `moo_moo_handler` — `adr-lint` catches it
+before the commit lands. Reproduce with
+[`./scripts/demo/record_demo.sh duet`](scripts/demo/record_demo.sh) — needs
+`asciinema`, `agg`, `tmux`, and the `claude` CLI on PATH.)
 
 ## What it solves
 

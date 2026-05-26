@@ -8,11 +8,22 @@
 # Usage:
 #   ./scripts/demo/record_demo.sh                       # records all sections
 #   ./scripts/demo/record_demo.sh create lint           # just those two
+#   ./scripts/demo/record_demo.sh duet                  # just the hero gif
 #   ./scripts/demo/record_demo.sh --no-gif              # skip agg conversion
 #
-# Requires: asciinema, agg (brew install asciinema agg). Plus the `claude`
-# CLI on PATH for the `lint` section.
+# Requires: asciinema, agg (brew install asciinema agg). The `duet` hero
+# section additionally needs tmux. The `lint` and `duet` sections invoke
+# `claude` for real, so that CLI must be on PATH and authenticated.
 set -euo pipefail
+
+# asciinema silently falls back to "headless" mode without a controlling
+# TTY, which breaks the duet's `tmux attach` capture (only a few final
+# frames make it into the cast). Fail loud with a fix hint instead.
+if [[ ! -t 0 || ! -t 1 ]]; then
+    echo "record_demo.sh needs a TTY. Wrap with:" >&2
+    echo "    script -q /dev/null $0 $*" >&2
+    exit 1
+fi
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SCENARIO="$REPO_ROOT/scripts/demo/scenario.sh"
@@ -23,20 +34,23 @@ mkdir -p "$TMP_BIN" "$DOCS_DIR"
 # Recording geometry. Matches a comfortable README display size.
 COLS=100
 ROWS=30
+# The duet uses a wider canvas to fit two side-by-side panes.
+DUET_COLS=170
+DUET_ROWS=30
 THEME="${AGG_THEME:-monokai}"
-FONT_SIZE="${AGG_FONT_SIZE:-14}"
+FONT_SIZE="${AGG_FONT_SIZE:-18}"
 
 WANT_GIF=1
 SECTIONS=()
 for arg in "$@"; do
     case "$arg" in
         --no-gif) WANT_GIF=0 ;;
-        create|lint|branch|lifecycle|all) SECTIONS+=("$arg") ;;
+        create|lint|branch|lifecycle|all|duet) SECTIONS+=("$arg") ;;
         *) echo "unknown arg: $arg" >&2; exit 2 ;;
     esac
 done
 if [[ ${#SECTIONS[@]} -eq 0 ]]; then
-    SECTIONS=(create lint branch lifecycle all)
+    SECTIONS=(duet create lint branch lifecycle)
 fi
 
 echo "==> Building adr-lint binary into $TMP_BIN"
@@ -71,7 +85,8 @@ record_one() {
     )
 
     # Sections that operate on an existing ADR (lint, lifecycle, branch) need
-    # the `create` flow to have run. Do that silently too.
+    # the `create` flow to have run. Do that silently too. The duet does
+    # its own `create` on camera, so skip pre-setup for it.
     case "$section" in
         lint|lifecycle|branch)
             echo "==> Pre-running create for: $section (silent)"
@@ -107,6 +122,23 @@ GOFILE
     fi
 
     echo "==> Recording section: $section"
+    # The duet runs through duet.sh (tmux-orchestrated split panes) on a
+    # wider canvas; every other section runs through the linear scenario.
+    local rec_cmd rec_cols rec_rows
+    if [[ "$section" == "duet" ]]; then
+        if ! command -v tmux >/dev/null 2>&1; then
+            echo "    duet requires tmux — install it (brew install tmux) and retry" >&2
+            return 1
+        fi
+        rec_cmd="bash '$REPO_ROOT/scripts/demo/duet.sh' '$proj'"
+        rec_cols="$DUET_COLS"
+        rec_rows="$DUET_ROWS"
+    else
+        rec_cmd="cd '$proj' && bash '$SCENARIO' '$section'"
+        rec_cols="$COLS"
+        rec_rows="$ROWS"
+    fi
+
     # Inherit the outer env (so `claude` can find its config + auth) but
     # prepend $TMP_BIN to PATH so the freshly-built adr-lint wins.
     PATH="$TMP_BIN:$PATH" \
@@ -114,9 +146,9 @@ GOFILE
         BEAT="${BEAT:-1.2}" \
         asciinema rec \
             --overwrite \
-            --window-size "${COLS}x${ROWS}" \
+            --window-size "${rec_cols}x${rec_rows}" \
             --idle-time-limit 1.5 \
-            --command "cd '$proj' && bash '$SCENARIO' '$section'" \
+            --command "$rec_cmd" \
             "$cast"
     echo "    wrote $cast"
 

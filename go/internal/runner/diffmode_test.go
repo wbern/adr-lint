@@ -226,8 +226,10 @@ func TestRun_DiffMode_PreFilterSkipIsStillReported(t *testing.T) {
 	if len(results) != 1 {
 		t.Fatalf("expected the skipped ADR to still be reported, got %d results", len(results))
 	}
-	if results[0].Status != types.StatusPASS {
-		t.Errorf("skip status = %v, want PASS", results[0].Status)
+	// SKIPPED, not PASS: the reviewer's gate counts what was actually enforced,
+	// and a rule nothing checked must not inflate that count.
+	if results[0].Status != types.StatusSKIPPED {
+		t.Errorf("skip status = %v, want SKIPPED", results[0].Status)
 	}
 	if !strings.Contains(results[0].Explanation, "pre-filter") {
 		t.Errorf("skip is not self-describing: %q", results[0].Explanation)

@@ -39,9 +39,20 @@ func ParseArgs(args []string) (types.LintOptions, error) {
 	opts.DryRun = slices.Contains(args, "--dry-run")
 	opts.NoCache = slices.Contains(args, "--no-cache")
 	opts.PerFile = slices.Contains(args, "--per-file")
+	opts.NoPreFilter = slices.Contains(args, "--no-pre-filter")
 
 	resolveBranch(args, &opts)
 	resolveFiles(args, &opts)
+
+	if err := resolveDiff(args, &opts); err != nil {
+		return opts, err
+	}
+	if err := resolveValueFlag(args, "--cache-dir", &opts.CacheDir); err != nil {
+		return opts, err
+	}
+	if err := resolveValueFlag(args, "--report-dir", &opts.ReportDir); err != nil {
+		return opts, err
+	}
 
 	if err := resolveADRs(args, &opts); err != nil {
 		return opts, err
@@ -71,6 +82,74 @@ func resolveBranch(args []string, opts *types.LintOptions) {
 			opts.BranchRef = next
 		}
 	}
+}
+
+// resolveDiff handles --diff <path> / --diff=<path>, where "-" means stdin.
+//
+// It cannot reuse resolveBranch's "next token is a value unless it starts with
+// a dash" rule, because the stdin spelling IS a dash. Requiring the value
+// explicitly also turns `--diff` with a forgotten argument into an error rather
+// than a silent fall-through to the staged diff, which would review the wrong
+// changes while looking like it worked.
+func resolveDiff(args []string, opts *types.LintOptions) error {
+	var val string
+	found := false
+	for i, a := range args {
+		switch {
+		case a == "--diff":
+			if i+1 < len(args) {
+				val = args[i+1]
+			}
+			found = true
+		case strings.HasPrefix(a, "--diff="):
+			val = strings.TrimPrefix(a, "--diff=")
+			found = true
+		default:
+			continue
+		}
+		break
+	}
+	if !found {
+		return nil
+	}
+	if val == "" || (strings.HasPrefix(val, "-") && val != "-") {
+		return fmt.Errorf("missing --diff value: expected a path to a unified diff, or - for stdin")
+	}
+	// --branch computes a diff and --files synthesises one; --diff supplies it.
+	// Honouring one and dropping the other silently would review bytes the
+	// caller never named.
+	if opts.BranchSet {
+		return fmt.Errorf("--diff cannot be combined with --branch: both supply the diff to check")
+	}
+	if opts.Files != nil {
+		return fmt.Errorf("--diff cannot be combined with --files: both supply the diff to check")
+	}
+	opts.DiffSet = true
+	opts.DiffPath = val
+	return nil
+}
+
+// resolveValueFlag reads a plain `--name value` / `--name=value` string option.
+func resolveValueFlag(args []string, name string, dst *string) error {
+	eq := name + "="
+	for i, a := range args {
+		switch {
+		case a == name:
+			if i+1 >= len(args) || strings.HasPrefix(args[i+1], "-") {
+				return fmt.Errorf("missing %s value: expected a directory path", name)
+			}
+			*dst = args[i+1]
+			return nil
+		case strings.HasPrefix(a, eq):
+			val := strings.TrimPrefix(a, eq)
+			if val == "" {
+				return fmt.Errorf("missing %s value: expected a directory path", name)
+			}
+			*dst = val
+			return nil
+		}
+	}
+	return nil
 }
 
 func resolveFiles(args []string, opts *types.LintOptions) {

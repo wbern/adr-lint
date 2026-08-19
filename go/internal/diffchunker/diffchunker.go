@@ -1,6 +1,10 @@
 package diffchunker
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/wbern/adr-lint/go/internal/diffstats"
+)
 
 const criticalReminder = "\n⚠️ REMINDER: Only check ADDED lines for violations ⚠️\n" +
 	"- Lines prefixed with `+` (e.g., `+ const x = 1`) → ADDED code — check these\n" +
@@ -49,21 +53,19 @@ func chunkByTokenLimit(fileDiffs []string, maxTokensPerChunk int) []string {
 	return chunks
 }
 
+// splitByFile delegates to diffstats.Split so there is ONE unified-diff parser
+// in this codebase. The local line-rejoining version it replaces could not tell
+// a missing trailing newline from a present one, which is tolerable when the
+// output only ever becomes prompt text but not when the same cut is used to
+// slice a supplied diff per ADR.
 func splitByFile(diff string) []string {
-	if strings.TrimSpace(diff) == "" {
+	files := diffstats.Split(diff)
+	if len(files) == 0 {
 		return nil
 	}
-	var chunks []string
-	var current []string
-	for _, line := range strings.Split(diff, "\n") {
-		if strings.HasPrefix(line, "diff --git") && len(current) > 0 {
-			chunks = append(chunks, strings.Join(current, "\n"))
-			current = nil
-		}
-		current = append(current, line)
-	}
-	if len(current) > 0 {
-		chunks = append(chunks, strings.Join(current, "\n"))
+	chunks := make([]string, 0, len(files))
+	for _, f := range files {
+		chunks = append(chunks, f.Text)
 	}
 	return chunks
 }

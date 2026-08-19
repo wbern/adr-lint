@@ -95,4 +95,11 @@ type LintResult struct {
 	CheckedFiles []string     `json:"checkedFiles,omitempty"`
 	FileStats    []FileStats  `json:"fileStats,omitempty"`
 	Cached       bool         `json:"cached,omitempty"`
+
+	// PromptBytes is what was actually sent to the model for this ADR —
+	// measured, not estimated. It answers "what did enforcing this rule cost"
+	// without needing a tokenizer, and it is the per-ADR analogue of the byte
+	// accounting a review gate uses to prove coverage. Zero means nothing was
+	// sent (a skip or a cache hit), which is a different claim from "cheap".
+	PromptBytes int `json:"promptBytes,omitempty"`
 }

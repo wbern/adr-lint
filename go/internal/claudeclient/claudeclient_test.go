@@ -25,22 +25,12 @@ func wrapCLIResponse(structured string) string {
 	return `{"type":"result","result":"","structured_output":` + structured + `}`
 }
 
-func TestLintWithClaude_DoesNotPopulateTokenUsage(t *testing.T) {
-	body := `{"status":"PASS","confidence":"high","explanation":"No violations found"}`
-	envelope := `{"type":"result","result":"","structured_output":` + body +
-		`,"usage":{"input_tokens":1500,"output_tokens":100}}`
-	c := NewClient(func(args []string) (string, error) {
-		return envelope, nil
-	})
-
-	got, err := c.Lint(sampleADR(), "+ vi.fn()")
-	if err != nil {
-		t.Fatalf("Lint: %v", err)
-	}
-	if got.TokenUsage != nil {
-		t.Errorf("TokenUsage = %+v, want nil", got.TokenUsage)
-	}
-}
+// TestLintWithClaude_DoesNotPopulateTokenUsage was here. It pinned the old
+// behaviour of discarding the CLI's `usage` block, which made every check
+// report no cost at all. That is now populated; the replacement cases live in
+// cost_test.go (TestLint_PopulatesTokenUsageFromCLIUsage and friends), which
+// keep the half of the contract still worth pinning: absent usage must stay
+// absent rather than becoming a zero.
 
 func TestLintWithClaude_InvokesClaudeWithExpectedArgs(t *testing.T) {
 	var captured []string

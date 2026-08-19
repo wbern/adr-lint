@@ -95,6 +95,12 @@ func Aggregate(chunks []types.LintResult, a adr.ADR) types.LintResult {
 	if tu := aggregateTokenUsage(chunks); tu != nil {
 		out.TokenUsage = tu
 	}
+	// Every chunk was a separate paid call, so the ADR's cost is their sum.
+	// Carrying only one chunk's figure would make a rule look cheaper the
+	// larger the diff it was checked against.
+	for _, c := range chunks {
+		out.PromptBytes += c.PromptBytes
+	}
 	return out
 }
 

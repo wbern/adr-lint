@@ -126,15 +126,17 @@ func TestCheckPreFilter_PatternMatches(t *testing.T) {
 	}
 }
 
-func TestCheckPreFilter_NoMatchReturnsPASS(t *testing.T) {
+// Renamed from ...ReturnsPASS: a pre-filtered rule is SKIPPED, not passed.
+// It was never checked, so it must not be counted as enforced (gci-0pq6w.9).
+func TestCheckPreFilter_NoMatchReturnsSKIPPED(t *testing.T) {
 	a := mockADR()
 	a.PreFilter = []string{"gomock"}
 	got := CheckPreFilter(a, `+ import "github.com/stretchr/testify/assert";`)
 	if got == nil {
 		t.Fatal("expected non-nil result")
 	}
-	if got.Status != types.StatusPASS {
-		t.Errorf("status = %q, want PASS", got.Status)
+	if got.Status != types.StatusSKIPPED {
+		t.Errorf("status = %q, want SKIPPED", got.Status)
 	}
 	if !strings.Contains(got.Explanation, "pre-filter") {
 		t.Errorf("explanation missing 'pre-filter': %q", got.Explanation)
@@ -159,8 +161,8 @@ func TestCheckPreFilter_ArrayPatternsNoMatch(t *testing.T) {
 	if got == nil {
 		t.Fatal("expected non-nil")
 	}
-	if got.Status != types.StatusPASS {
-		t.Errorf("status = %q, want PASS", got.Status)
+	if got.Status != types.StatusSKIPPED {
+		t.Errorf("status = %q, want SKIPPED", got.Status)
 	}
 	if !strings.Contains(got.Explanation, `"as any" or ": any"`) {
 		t.Errorf("explanation = %q", got.Explanation)

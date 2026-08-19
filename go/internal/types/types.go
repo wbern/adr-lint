@@ -62,6 +62,25 @@ type LintOptions struct {
 	ADRs      []string
 	Parallel  *int
 	PerFile   bool
+
+	// DiffSet/DiffPath supply the diff from outside git — a PR diff piped in,
+	// for example. DiffPath "-" reads stdin. This is what lets adr-lint run
+	// against a pull request without checking the branch out; the ADR corpus
+	// still comes from the working directory.
+	DiffSet  bool
+	DiffPath string
+
+	// CacheDir/ReportDir relocate the two things a run writes. Both default to
+	// paths under the repository root, which is wrong whenever the repository
+	// is a shared read-only checkout being borrowed for its doc/adr.
+	CacheDir  string
+	ReportDir string
+
+	// NoPreFilter checks every applicable ADR with the model, ignoring
+	// pre_filter. Deliberately not a performance knob: it is the control arm
+	// for detecting a pre_filter whose terms no longer match the rule it
+	// guards, which otherwise fails silently as a pass.
+	NoPreFilter bool
 }
 
 // LintResult is the outcome of checking a single ADR against a diff.
@@ -76,4 +95,11 @@ type LintResult struct {
 	CheckedFiles []string     `json:"checkedFiles,omitempty"`
 	FileStats    []FileStats  `json:"fileStats,omitempty"`
 	Cached       bool         `json:"cached,omitempty"`
+
+	// PromptBytes is what was actually sent to the model for this ADR —
+	// measured, not estimated. It answers "what did enforcing this rule cost"
+	// without needing a tokenizer, and it is the per-ADR analogue of the byte
+	// accounting a review gate uses to prove coverage. Zero means nothing was
+	// sent (a skip or a cache hit), which is a different claim from "cheap".
+	PromptBytes int `json:"promptBytes,omitempty"`
 }

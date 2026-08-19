@@ -59,6 +59,40 @@ type cliResponse struct {
 	Type             string          `json:"type"`
 	Result           string          `json:"result"`
 	StructuredOutput json.RawMessage `json:"structured_output,omitempty"`
+	Usage            *cliUsage       `json:"usage,omitempty"`
+}
+
+// cliUsage is the token accounting the Claude CLI already reports and this
+// client used to throw away. A pointer, so "the CLI said nothing" stays
+// distinguishable from "the CLI said zero" — a zeroed cost reads as a free
+// review, which is worse than an absent one.
+type cliUsage struct {
+	InputTokens              int `json:"input_tokens"`
+	OutputTokens             int `json:"output_tokens"`
+	CacheReadInputTokens     int `json:"cache_read_input_tokens"`
+	CacheCreationInputTokens int `json:"cache_creation_input_tokens"`
+}
+
+// toTokenUsage folds the CLI's four counters into the shape the rest of the
+// tool reports. Cache reads and cache writes are counted as prompt tokens
+// because they ARE input the model processed; omitting them under-reports
+// spend precisely on the runs that repeat most.
+func (u *cliUsage) toTokenUsage(model string) *types.TokenUsage {
+	if u == nil {
+		return nil
+	}
+	prompt := u.InputTokens + u.CacheReadInputTokens + u.CacheCreationInputTokens
+	tu := &types.TokenUsage{
+		PromptTokens:     prompt,
+		CompletionTokens: u.OutputTokens,
+		TotalTokens:      prompt + u.OutputTokens,
+		Model:            model,
+	}
+	if u.CacheReadInputTokens > 0 {
+		cached := u.CacheReadInputTokens
+		tu.CachedTokens = &cached
+	}
+	return tu
 }
 
 // Runner shells out to claude with the given argv and returns its
@@ -143,7 +177,9 @@ func (c *Client) Lint(a adr.ADR, diff string) (types.LintResult, error) {
 		responseText = string(cli.StructuredOutput)
 	}
 
-	return responseparser.ParseResponse(a, responseText, nil), nil
+	result := responseparser.ParseResponse(a, responseText, cli.Usage.toTokenUsage(model))
+	result.PromptBytes = len(prompt)
+	return result, nil
 }
 
 func (c *Client) classifyRunnerError(a adr.ADR, err error) types.LintResult {

@@ -115,11 +115,22 @@ func CheckPreFilter(a adr.ADR, diff string) *types.LintResult {
 	}
 	patternDesc := strings.Join(quoted, " or ")
 
-	conf := types.Confidence("high")
+	// NOT EVALUATED, not passed. Nothing checked this rule, so claiming PASS
+	// makes an unenforced rule indistinguishable from an enforced one — and
+	// anything counting passes, a merge gate most of all, then over-reports how
+	// much policy it actually applied.
+	//
+	// Measured on crm PR #1302: 9 ADRs were pre-filtered and 2 of them FAIL when
+	// actually checked. ADR-0011 forbids transport-layer mocking but its filter
+	// lists only flaky-test idioms; ADR-0059 is architectural but its filter
+	// lists implementation tokens. Both filters covered ONE CLAUSE of a
+	// multi-clause rule, and both reported PASS with high confidence.
+	//
+	// No Confidence either: no model ran, so there is no verdict to be
+	// confident about. Asserting "high" was the most misleading part.
 	return &types.LintResult{
 		ADR:         a,
-		Status:      types.StatusPASS,
-		Explanation: "No violations (pre-filter: " + patternDesc + " not found in diff)",
-		Confidence:  &conf,
+		Status:      types.StatusSKIPPED,
+		Explanation: "Not evaluated (pre-filter: " + patternDesc + " not found in diff). This rule was NOT checked.",
 	}
 }

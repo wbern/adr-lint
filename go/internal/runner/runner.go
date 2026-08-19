@@ -39,9 +39,16 @@ const DefaultMaxParallel = 5
 type RunDeps struct {
 	Out      io.Writer
 	Err      io.Writer
+	In       io.Reader // empty = os.Stdin; the source for --diff -
 	Git      *gitcontext.Client
 	LintFns  map[types.Provider]cache.LintFn
 	CacheDir string // empty = cache.GetCacheDir()
+
+	// Results, when non-nil, receives the per-ADR results. Run's exit code
+	// collapses them to pass/fail; a caller that must prove every applicable
+	// ADR reached a terminal status needs the results themselves, and in
+	// --diff mode there may be no artifact directory to read them back from.
+	Results *[]types.LintResult
 }
 
 // Run is the orchestration entrypoint. Returns the desired process
@@ -90,7 +97,22 @@ func Run(opts types.LintOptions, deps RunDeps) (int, error) {
 	gitRoot := deps.Git.GitRoot()
 	adrDir := filepath.Join(gitRoot, adr.DirName)
 
-	allChangedFiles, exit, err := selectChangedFiles(opts, deps.Git, gitRoot, targetRef, log)
+	// In --diff mode the diff is read once, up front, and its own file headers
+	// become the changed-file list. git is never asked about the diff — the
+	// point of the mode is to check a change that is not checked out. gitRoot
+	// is still used, but only to locate the ADR corpus.
+	var (
+		suppliedDiff []diffstats.FileDiff
+		err          error
+	)
+	if opts.DiffSet {
+		suppliedDiff, err = readSuppliedDiff(opts.DiffPath, deps.In)
+		if err != nil {
+			return 1, err
+		}
+	}
+
+	allChangedFiles, exit, err := selectChangedFiles(opts, deps.Git, gitRoot, targetRef, log, suppliedDiff)
 	if exit != nil || err != nil {
 		return derefExit(exit), err
 	}
@@ -169,6 +191,12 @@ func Run(opts types.LintOptions, deps RunDeps) (int, error) {
 
 	getDiff := func(files []string, includeContext bool) string {
 		switch {
+		case opts.DiffSet:
+			// includeContext is deliberately ignored: an ADR's diff_context
+			// asks git to widen the hunks, and we cannot widen a diff someone
+			// handed us. Pretending otherwise would silently under-deliver
+			// context to the ADRs that asked for it.
+			return sliceSuppliedDiff(suppliedDiff, files)
 		case opts.BranchSet:
 			return deps.Git.GetDiffAgainstMainForFiles(files, targetRef, includeContext)
 		case len(opts.Files) > 0:
@@ -182,7 +210,14 @@ func Run(opts types.LintOptions, deps RunDeps) (int, error) {
 	if !ok || lintFn == nil {
 		return 1, fmt.Errorf("provider %q is not available in this build", opts.Provider)
 	}
-	cacheDir := deps.CacheDir
+	// Precedence: explicit flag, then the caller's injected default, then the
+	// repo-relative default. The flag matters when cwd is a shared checkout
+	// borrowed for its doc/adr — writing a cache tree into it dirties someone
+	// else's working copy.
+	cacheDir := opts.CacheDir
+	if cacheDir == "" {
+		cacheDir = deps.CacheDir
+	}
 	if cacheDir == "" {
 		cacheDir = cache.GetCacheDir()
 	}
@@ -207,10 +242,18 @@ func Run(opts types.LintOptions, deps RunDeps) (int, error) {
 		results = append(results, batchResults...)
 	}
 
+	if deps.Results != nil {
+		*deps.Results = results
+	}
+
 	PrintResults(deps.Out, results, opts)
 
 	if opts.CI {
-		if err := WriteCIArtifacts(filepath.Join(gitRoot, "adr-lint-report"), results); err != nil {
+		reportDir := opts.ReportDir
+		if reportDir == "" {
+			reportDir = filepath.Join(gitRoot, "adr-lint-report")
+		}
+		if err := WriteCIArtifacts(reportDir, results); err != nil {
 			return 1, err
 		}
 	}
@@ -230,8 +273,10 @@ func derefExit(p *int) int {
 	return *p
 }
 
-func selectChangedFiles(opts types.LintOptions, git *gitcontext.Client, gitRoot, targetRef string, log *logger.Logger) ([]string, *int, error) {
+func selectChangedFiles(opts types.LintOptions, git *gitcontext.Client, gitRoot, targetRef string, log *logger.Logger, supplied []diffstats.FileDiff) ([]string, *int, error) {
 	switch {
+	case opts.DiffSet:
+		return changedFilesFromDiff(supplied)
 	case opts.BranchSet:
 		branchFiles := git.GetFilesChangedAgainstMain(targetRef)
 		if len(opts.Files) > 0 {
@@ -336,9 +381,14 @@ func runOnePair(
 	}
 	diff := getDiff(files, a.DiffContext)
 
-	if pre := formatter.CheckPreFilter(a, diff); pre != nil {
-		pre.CheckedFiles = files
-		return *pre
+	// --no-pre-filter is the control arm for pre_filter drift: it forces the
+	// model check even when the rule's terms are absent, so a skip that should
+	// have been a finding can be caught by comparing the two runs.
+	if !opts.NoPreFilter {
+		if pre := formatter.CheckPreFilter(a, diff); pre != nil {
+			pre.CheckedFiles = files
+			return *pre
+		}
 	}
 
 	cfg, ok := ProviderModelFor(opts.Provider, a.Complexity)

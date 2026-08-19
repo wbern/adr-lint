@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/wbern/adr-lint/compare/v0.1.3...v0.2.0) (2026-08-19)
+
+
+### Features
+
+* **cli:** check a supplied diff, report real cost, and stop reporting skips as passes ([#8](https://github.com/wbern/adr-lint/issues/8)) ([684bce8](https://github.com/wbern/adr-lint/commit/684bce83c0bcf20f0ba5a5bfe4cc30d3e895e4f2))
+
 ## [0.1.3](https://github.com/wbern/adr-lint/compare/v0.1.2...v0.1.3) (2026-05-13)
 
 
